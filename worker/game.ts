@@ -96,14 +96,35 @@ export async function handleGame(req: Request, env: Env): Promise<Response> {
     const body = raw as Record<string, unknown>
     await ensureSchema(db)
     const existing = getCookie(req, 'crystal_player')
-    const session = isUuidV4(existing) ? existing : crypto.randomUUID()
+    let session = isUuidV4(existing) ? existing : crypto.randomUUID()
     const now = nowSec()
+    const tg = await parseInitData(body.initData, env.TELEGRAM_BOT_TOKEN)
     const byLogin = () =>
       db
         .prepare('SELECT * FROM players WHERE session = ?')
         .bind(session)
         .first<PlayerRow>()
     let row = await byLogin()
+    if (tg?.verified) {
+      // One profile per verified Telegram account, whatever the cookie says: several
+      // accounts on one device (shared cookies) no longer share a balance, and the
+      // same account keeps its profile on another device.
+      const owned = await db
+        .prepare(
+          'SELECT * FROM players WHERE tg_verified = 1 AND tg_id = ? ORDER BY created_at, id LIMIT 1',
+        )
+        .bind(tg.id)
+        .first<PlayerRow>()
+      if (owned) {
+        row = owned
+        session = owned.session
+      } else if (row && row.tg_verified && row.tg_id !== tg.id) {
+        // The cookie profile belongs to another Telegram account: start a new one.
+        row = null
+        session = crypto.randomUUID()
+      }
+      // Otherwise an anonymous (or not yet verified) profile is adopted by this account.
+    }
     let created = false
     if (!row) {
       const newId = crypto.randomUUID()
@@ -127,7 +148,6 @@ export async function handleGame(req: Request, env: Env): Promise<Response> {
     if (!row) throw new Error('player missing')
     // Remember the Telegram name and photo (also for banned players, so they can be found).
     // `version` is untouched, so this never interferes with balance updates.
-    const tg = await parseInitData(body.initData, env.TELEGRAM_BOT_TOKEN)
     // SQLite lower() only handles Latin letters, so a lowercase copy is kept for search.
     const search = tg
       ? [tg.name, tg.username].filter(Boolean).join(' ').toLowerCase()
