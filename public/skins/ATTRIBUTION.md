@@ -1,0 +1,1 @@
+CS2 item renders: Valve Corporation, downloaded from the Steam Community CDN. Catalog lookup: https://github.com/ByMykel/CSGO-API . All Counter-Strike names and artwork belong to their respective owners. These images represent virtual game rewards; this app has no Steam inventory integration or Valve affiliation.
