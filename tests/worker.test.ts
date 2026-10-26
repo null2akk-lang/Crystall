@@ -402,6 +402,41 @@ await test('telegram ban: unverified Telegram data never bans other profiles', a
   delete env.TELEGRAM_BOT_TOKEN
   assert.equal((await a.game({ action: 'state' })).status, 403) // the cookie profile itself stays banned
 })
+await test('telegram profiles: accounts sharing one device get separate profiles', async () => {
+  env.TELEGRAM_BOT_TOKEN = '123:TOKEN'
+  const device = new Client('3.3.3.1') // one cookie jar, two Telegram accounts
+  const ua = { id: 5001, first_name: 'A' }
+  const ub = { id: 5002, first_name: 'B' }
+  const a1 = await device.game({ action: 'state', initData: await makeInitData('123:TOKEN', ua) })
+  await device.game({ action: 'open', caseId: cheap.id, initData: await makeInitData('123:TOKEN', ua) })
+  const b1 = await device.game({ action: 'state', initData: await makeInitData('123:TOKEN', ub) })
+  assert.notEqual(a1.data.player.id, b1.data.player.id)
+  assert.equal(b1.data.player.balance, 1000)
+  assert.equal(b1.data.player.inventory.length, 0)
+  // back to account A on the same device: its own balance and skin
+  const a2 = await device.game({ action: 'state', initData: await makeInitData('123:TOKEN', ua) })
+  assert.equal(a2.data.player.id, a1.data.player.id)
+  assert.equal(a2.data.player.inventory.length, 1)
+  // account A from a brand new device (no cookies) keeps the same profile
+  const phone = new Client('3.3.3.2')
+  const a3 = await phone.game({ action: 'state', initData: await makeInitData('123:TOKEN', ua) })
+  assert.equal(a3.data.player.id, a1.data.player.id)
+  assert.equal(a3.data.welcome, false)
+  // a banned account does not block the other account on the same device
+  await operator.admin({ action: 'ban', recipient: a1.data.player.id, mode: 'permanent' })
+  assert.equal((await device.game({ action: 'state', initData: await makeInitData('123:TOKEN', ub) })).status, 200)
+  assert.equal((await device.game({ action: 'state', initData: await makeInitData('123:TOKEN', ua) })).status, 403)
+  delete env.TELEGRAM_BOT_TOKEN
+})
+await test('telegram profiles: an existing anonymous profile is adopted by the first account', async () => {
+  const old = new Client('3.3.4.1')
+  const before = await old.game({ action: 'open', caseId: cheap.id })
+  env.TELEGRAM_BOT_TOKEN = '123:TOKEN'
+  const after = await old.game({ action: 'state', initData: await makeInitData('123:TOKEN', { id: 6001, first_name: 'C' }) })
+  assert.equal(after.data.player.id, before.data.player.id)
+  assert.equal(after.data.player.inventory.length, 1)
+  delete env.TELEGRAM_BOT_TOKEN
+})
 await test('static files fall through to ASSETS, unknown api is 404', async () => {
   const res = await worker.fetch(new Request(ORIGIN + '/index.html'), env)
   assert.equal(await res.text(), 'asset')
