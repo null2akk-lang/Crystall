@@ -828,19 +828,79 @@ footer button {
   font-size: 10px;
   color: #747f6d;
 }
+.tier-safe {
+  --ring: var(--lime);
+}
+.tier-risk {
+  --ring: #e8b04a;
+}
+.tier-critical {
+  --ring: #e0645a;
+}
+.tier-none {
+  --ring: #5b7542;
+}
 .chance-wheel {
+  position: relative;
   width: 175px;
   height: 175px;
-  border: 5px solid #5b7542;
-  border-top-color: var(--lime);
-  border-right-color: var(--lime);
   border-radius: 50%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  box-shadow: inset 0 0 0 8px #a9c07b0a;
-  color: var(--lime);
+  /* The coloured sector is the winning zone: its size equals the chance. */
+  background: conic-gradient(
+    var(--ring) 0 var(--chance, 0%),
+    #2c3328 var(--chance, 0%) 100%
+  );
+  color: var(--ring);
+  transition: color 0.3s;
+}
+.chance-wheel::before {
+  content: '';
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #20271c, #171b1f);
+  box-shadow: inset 0 0 0 1px #a9c07b18;
+}
+.chance-wheel > span,
+.chance-wheel > p {
+  position: relative;
+  z-index: 1;
+}
+.wheel-arrow {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+.wheel-arrow.spinning {
+  transition: transform 4.2s cubic-bezier(0.1, 0.72, 0.12, 1);
+}
+.wheel-arrow::before {
+  content: '';
+  position: absolute;
+  top: -5%;
+  left: 42%;
+  width: 16%;
+  height: 17%;
+  background: #fff;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 2px 3px #000);
+}
+.wheel-arrow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: 11%;
+  background: #fff;
+  box-shadow: 0 0 8px #fff;
 }
 .chance-wheel > span {
   font-size: 35px;
@@ -2257,7 +2317,7 @@ img.weapon {
 .dev-list button {
   width: 100%;
   display: grid;
-  grid-template-columns: 82px 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   text-align: left;
@@ -2464,12 +2524,148 @@ img.weapon {
 .ban-card .secondary {
   margin-top: 10px;
 }
+.dev-avatar {
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #2b3328;
+}
+.dev-avatar.fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lime);
+  font-weight: 800;
+}
+.dev-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.dev-player-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dev-player-name b {
+  font-size: 13px;
+  color: #eef0f2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dev-journal-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.dev-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dev-who > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dev-who strong {
+  font-size: 15px;
+  color: #eef0f2;
+  overflow-wrap: anywhere;
+}
+.dev-who span,
+.dev-who small {
+  font-size: 11px;
+  color: #8f97a2;
+}
+/* ---------- Upgrade: target filter ---------- */
+.tier-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 12px;
+}
+.tier-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  background: #1c2026;
+  border: 1px solid #323740;
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #cfd6cb;
+}
+.tier-chip small {
+  font-size: 9px;
+  font-weight: 500;
+  color: #848e99;
+}
+.tier-chip:not(.active):not(:disabled):hover {
+  border-color: var(--ring, #5b7542);
+}
+.tier-chip.active {
+  border-color: var(--ring, var(--lime));
+  background: #262e23;
+  color: #fff;
+}
+.tier-chip.tier-safe,
+.tier-chip.tier-risk,
+.tier-chip.tier-critical {
+  box-shadow: inset 3px 0 0 var(--ring);
+}
+.tier-chip:disabled {
+  opacity: 0.45;
+}
+.tier-hint {
+  font-size: 11px;
+  margin: 0 0 10px;
+}
+.skin-card {
+  position: relative;
+}
+.chance-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ring);
+  background: #14181dd9;
+  border: 1px solid var(--ring);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+.weapon-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 3 / 2;
+  color: #848e99;
+  font-size: 12px;
+  text-align: center;
+}
+.dev-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #8f97a2;
+}
 @media (max-width: 650px) {
   .game-modal.wide {
     padding: 22px 16px;
   }
   .dev-list button {
-    grid-template-columns: 70px 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
   .dev-items {
     display: none;

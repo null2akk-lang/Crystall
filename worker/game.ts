@@ -1,5 +1,11 @@
 import { cases, skins, skinById, type Item } from '../src/lib/game'
-import { banSeconds, ensureSchema, parseInventory, type PlayerRow } from './db'
+import {
+  banSeconds,
+  ensureSchema,
+  parseInventory,
+  strongerBan,
+  type PlayerRow,
+} from './db'
 import {
   cookie,
   getCookie,
@@ -8,6 +14,7 @@ import {
   nowSec,
   randomInt,
 } from './util'
+import { parseInitData } from './telegram'
 import type { Env } from './types'
 
 // Messages of GameError are shown to the player; any other error becomes a generic 503.
@@ -118,6 +125,72 @@ export async function handleGame(req: Request, env: Env): Promise<Response> {
       row = await byLogin()
     }
     if (!row) throw new Error('player missing')
+    // Remember the Telegram name and photo (also for banned players, so they can be found).
+    // `version` is untouched, so this never interferes with balance updates.
+    const tg = await parseInitData(body.initData, env.TELEGRAM_BOT_TOKEN)
+    // SQLite lower() only handles Latin letters, so a lowercase copy is kept for search.
+    const search = tg
+      ? [tg.name, tg.username].filter(Boolean).join(' ').toLowerCase()
+      : null
+    if (
+      tg &&
+      (row.tg_id !== tg.id ||
+        row.tg_username !== tg.username ||
+        row.tg_name !== tg.name ||
+        row.tg_photo !== tg.photo ||
+        row.tg_search !== search ||
+        row.tg_verified !== (tg.verified ? 1 : 0))
+    ) {
+      await db
+        .prepare(
+          'UPDATE players SET tg_id = ?, tg_username = ?, tg_name = ?, tg_photo = ?, tg_search = ?, tg_verified = ? WHERE id = ?',
+        )
+        .bind(
+          tg.id,
+          tg.username,
+          tg.name,
+          tg.photo,
+          search,
+          tg.verified ? 1 : 0,
+          row.id,
+        )
+        .run()
+      row = {
+        ...row,
+        tg_id: tg.id,
+        tg_username: tg.username,
+        tg_name: tg.name,
+        tg_photo: tg.photo,
+        tg_search: search,
+        tg_verified: tg.verified ? 1 : 0,
+      }
+    }
+    // A ban follows the verified Telegram account: a new profile (cleared cookies,
+    // another device) of a banned account is blocked too.
+    if (tg?.verified) {
+      const linked = await db
+        .prepare(
+          'SELECT ban_permanent, banned_until, ban_reason FROM tg_bans WHERE tg_id = ?',
+        )
+        .bind(tg.id)
+        .first<Pick<PlayerRow, 'ban_permanent' | 'banned_until' | 'ban_reason'>>()
+      if (linked && (linked.ban_permanent || banSeconds(linked, now) > 0)) {
+        const stronger = strongerBan(row, linked, now)
+        if (stronger.permanent !== Boolean(row.ban_permanent) || stronger.seconds > banSeconds(row, now)) {
+          // Copy it to this profile so it also shows as banned in the developer panel.
+          const source = stronger.permanent
+            ? { ban_permanent: 1, banned_until: null }
+            : { ban_permanent: 0, banned_until: linked.banned_until }
+          await db
+            .prepare(
+              'UPDATE players SET ban_permanent = ?, banned_until = ?, ban_reason = ? WHERE id = ?',
+            )
+            .bind(source.ban_permanent, source.banned_until, linked.ban_reason, row.id)
+            .run()
+          row = { ...row, ...source, ban_reason: linked.ban_reason }
+        }
+      }
+    }
     const seconds = banSeconds(row, now)
     if (row.ban_permanent || seconds > 0)
       return json(

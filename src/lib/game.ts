@@ -1,7 +1,7 @@
 export const skins = [
   {
     id: 'slate',
-    image: '/skins/slate.png',
+    image: '/skins/slate.webp',
     name: 'Slate',
     weapon: 'AK-47',
     value: 120,
@@ -10,7 +10,7 @@ export const skins = [
   },
   {
     id: 'arctic',
-    image: '/skins/arctic.png',
+    image: '/skins/arctic.webp',
     name: 'Decimator',
     weapon: 'M4A1-S',
     value: 280,
@@ -19,7 +19,7 @@ export const skins = [
   },
   {
     id: 'toxic',
-    image: '/skins/toxic.png',
+    image: '/skins/toxic.webp',
     name: 'Monster Mashup',
     weapon: 'USP-S',
     value: 650,
@@ -28,7 +28,7 @@ export const skins = [
   },
   {
     id: 'pulse',
-    image: '/skins/pulse.png',
+    image: '/skins/pulse.webp',
     name: 'Neo-Noir',
     weapon: 'AWP',
     value: 1400,
@@ -37,7 +37,7 @@ export const skins = [
   },
   {
     id: 'ember',
-    image: '/skins/ember.png',
+    image: '/skins/ember.webp',
     name: 'Redline',
     weapon: 'AK-47',
     value: 3200,
@@ -46,7 +46,7 @@ export const skins = [
   },
   {
     id: 'fade',
-    image: '/skins/fade.png',
+    image: '/skins/fade.webp',
     name: 'Fade',
     weapon: 'M4A1-S',
     value: 7500,
@@ -56,7 +56,7 @@ export const skins = [
   {
     knife: true,
     id: 'karambit',
-    image: '/skins/karambit.png',
+    image: '/skins/karambit.webp',
     name: 'Doppler',
     weapon: 'Karambit',
     value: 16000,
@@ -66,7 +66,7 @@ export const skins = [
 
   {
     id: 'cs2-skin-8f578bc8c6ef',
-    image: '/skins/skin-8f578bc8c6ef.png',
+    image: '/skins/skin-8f578bc8c6ef.webp',
     name: 'Sand Dune',
     weapon: 'P250',
     value: 15,
@@ -76,7 +76,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-7f5e06a2c68c',
-    image: '/skins/skin-7f5e06a2c68c.png',
+    image: '/skins/skin-7f5e06a2c68c.webp',
     name: 'Sand Dune',
     weapon: 'Nova',
     value: 20,
@@ -86,7 +86,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-dfd5859c02ae',
-    image: '/skins/skin-dfd5859c02ae.png',
+    image: '/skins/skin-dfd5859c02ae.webp',
     name: 'Sand Dashed',
     weapon: 'MP9',
     value: 25,
@@ -96,7 +96,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-319e3413b40b',
-    image: '/skins/skin-319e3413b40b.png',
+    image: '/skins/skin-319e3413b40b.webp',
     name: 'Death Rattle',
     weapon: 'Glock-18',
     value: 30,
@@ -106,7 +106,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-d4dd8527d3b1',
-    image: '/skins/skin-d4dd8527d3b1.png',
+    image: '/skins/skin-d4dd8527d3b1.webp',
     name: 'Forest Night',
     weapon: 'Five-SeveN',
     value: 35,
@@ -116,7 +116,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-9971505b1e6e',
-    image: '/skins/skin-9971505b1e6e.png',
+    image: '/skins/skin-9971505b1e6e.webp',
     name: 'Army Sheen',
     weapon: 'SG 553',
     value: 40,
@@ -126,7 +126,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-e68259d80f02',
-    image: '/skins/skin-e68259d80f02.png',
+    image: '/skins/skin-e68259d80f02.webp',
     name: 'Contractor',
     weapon: 'SCAR-20',
     value: 45,
@@ -136,7 +136,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-bdbf47639811',
-    image: '/skins/skin-bdbf47639811.png',
+    image: '/skins/skin-bdbf47639811.webp',
     name: 'Desert Storm',
     weapon: 'G3SG1',
     value: 50,
@@ -146,7 +146,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-484fe1d0665e',
-    image: '/skins/skin-484fe1d0665e.png',
+    image: '/skins/skin-484fe1d0665e.webp',
     name: 'Sand Dashed',
     weapon: 'PP-Bizon',
     value: 55,
@@ -156,7 +156,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-7cc934394691',
-    image: '/skins/skin-7cc934394691.png',
+    image: '/skins/skin-7cc934394691.webp',
     name: 'Rust Coat',
     weapon: 'MAG-7',
     value: 60,
@@ -166,7 +166,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-e34d4776c3fa',
-    image: '/skins/skin-e34d4776c3fa.png',
+    image: '/skins/skin-e34d4776c3fa.webp',
     name: 'Forest DDPAT',
     weapon: 'Sawed-Off',
     value: 65,
@@ -176,7 +176,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-99e9ef5072fe',
-    image: '/skins/skin-99e9ef5072fe.png',
+    image: '/skins/skin-99e9ef5072fe.webp',
     name: 'Urban DDPAT',
     weapon: 'UMP-45',
     value: 70,
@@ -186,7 +186,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-034dafc33fbe',
-    image: '/skins/skin-034dafc33fbe.png',
+    image: '/skins/skin-034dafc33fbe.webp',
     name: 'Sand Spray',
     weapon: 'P90',
     value: 80,
@@ -196,7 +196,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-47412dd518bb',
-    image: '/skins/skin-47412dd518bb.png',
+    image: '/skins/skin-47412dd518bb.webp',
     name: 'Silver',
     weapon: 'MAC-10',
     value: 95,
@@ -206,7 +206,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-7698ea25d00a',
-    image: '/skins/skin-7698ea25d00a.png',
+    image: '/skins/skin-7698ea25d00a.webp',
     name: 'Bronze Deco',
     weapon: 'Desert Eagle',
     value: 110,
@@ -216,7 +216,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-82e19c21d6d0',
-    image: '/skins/skin-82e19c21d6d0.png',
+    image: '/skins/skin-82e19c21d6d0.webp',
     name: 'Ice Cap',
     weapon: 'Tec-9',
     value: 140,
@@ -226,7 +226,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-3903899a4282',
-    image: '/skins/skin-3903899a4282.png',
+    image: '/skins/skin-3903899a4282.webp',
     name: 'Oceanic',
     weapon: 'P2000',
     value: 170,
@@ -236,7 +236,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-df49957ef56b',
-    image: '/skins/skin-df49957ef56b.png',
+    image: '/skins/skin-df49957ef56b.webp',
     name: 'Cirrus',
     weapon: 'MP7',
     value: 210,
@@ -246,7 +246,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-4a4571ce6fe7',
-    image: '/skins/skin-4a4571ce6fe7.png',
+    image: '/skins/skin-4a4571ce6fe7.webp',
     name: 'Survivor Z',
     weapon: 'FAMAS',
     value: 250,
@@ -256,7 +256,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-8ba4193b0479',
-    image: '/skins/skin-8ba4193b0479.png',
+    image: '/skins/skin-8ba4193b0479.webp',
     name: 'Rocket Pop',
     weapon: 'Galil AR',
     value: 300,
@@ -266,7 +266,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-ded653e7bd24',
-    image: '/skins/skin-ded653e7bd24.png',
+    image: '/skins/skin-ded653e7bd24.webp',
     name: 'Abyss',
     weapon: 'SSG 08',
     value: 360,
@@ -276,7 +276,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-52971a3886a2',
-    image: '/skins/skin-52971a3886a2.png',
+    image: '/skins/skin-52971a3886a2.webp',
     name: 'Moonrise',
     weapon: 'Glock-18',
     value: 430,
@@ -286,7 +286,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-b10fdec34656',
-    image: '/skins/skin-b10fdec34656.png',
+    image: '/skins/skin-b10fdec34656.webp',
     name: 'Asiimov',
     weapon: 'P250',
     value: 550,
@@ -296,7 +296,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-b2a5203033ee',
-    image: '/skins/skin-b2a5203033ee.png',
+    image: '/skins/skin-b2a5203033ee.webp',
     name: 'Monkey Business',
     weapon: 'Five-SeveN',
     value: 700,
@@ -306,7 +306,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-ec1689ee3e4c',
-    image: '/skins/skin-ec1689ee3e4c.png',
+    image: '/skins/skin-ec1689ee3e4c.webp',
     name: 'Conspiracy',
     weapon: 'Desert Eagle',
     value: 850,
@@ -316,7 +316,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-b587b6dd9b9b',
-    image: '/skins/skin-b587b6dd9b9b.png',
+    image: '/skins/skin-b587b6dd9b9b.webp',
     name: 'Evil Daimyo',
     weapon: 'M4A4',
     value: 1000,
@@ -326,7 +326,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-ea4e27f0cd16',
-    image: '/skins/skin-ea4e27f0cd16.png',
+    image: '/skins/skin-ea4e27f0cd16.webp',
     name: 'Elite Build',
     weapon: 'AK-47',
     value: 1250,
@@ -336,7 +336,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-d6cf8565026b',
-    image: '/skins/skin-d6cf8565026b.png',
+    image: '/skins/skin-d6cf8565026b.webp',
     name: 'Atheris',
     weapon: 'AWP',
     value: 1600,
@@ -346,7 +346,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-3901933d5e47',
-    image: '/skins/skin-3901933d5e47.png',
+    image: '/skins/skin-3901933d5e47.webp',
     name: 'Cortex',
     weapon: 'USP-S',
     value: 2000,
@@ -356,7 +356,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-e8144faeae9f',
-    image: '/skins/skin-e8144faeae9f.png',
+    image: '/skins/skin-e8144faeae9f.webp',
     name: 'Neo-Noir',
     weapon: 'M4A4',
     value: 2600,
@@ -366,7 +366,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-1e9f98a04b79',
-    image: '/skins/skin-1e9f98a04b79.png',
+    image: '/skins/skin-1e9f98a04b79.webp',
     name: 'Frontside Misty',
     weapon: 'AK-47',
     value: 3500,
@@ -376,7 +376,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-bb633c21fc25',
-    image: '/skins/skin-bb633c21fc25.png',
+    image: '/skins/skin-bb633c21fc25.webp',
     name: 'Asiimov',
     weapon: 'AWP',
     value: 4800,
@@ -386,7 +386,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-1b3ca668024e',
-    image: '/skins/skin-1b3ca668024e.png',
+    image: '/skins/skin-1b3ca668024e.webp',
     name: 'The Empress',
     weapon: 'AK-47',
     value: 6200,
@@ -396,7 +396,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-8e45a15cf7f5',
-    image: '/skins/skin-8e45a15cf7f5.png',
+    image: '/skins/skin-8e45a15cf7f5.webp',
     name: 'Printstream',
     weapon: 'M4A1-S',
     value: 9000,
@@ -406,7 +406,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-4f8d99d09ded',
-    image: '/skins/skin-4f8d99d09ded.png',
+    image: '/skins/skin-4f8d99d09ded.webp',
     name: 'Dragon Lore',
     weapon: 'AWP',
     value: 14000,
@@ -416,7 +416,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-95831ce7c492',
-    image: '/skins/skin-95831ce7c492.png',
+    image: '/skins/skin-95831ce7c492.webp',
     name: 'Fade',
     weapon: 'Bayonet',
     value: 12000,
@@ -426,7 +426,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-eae7c10fa54f',
-    image: '/skins/skin-eae7c10fa54f.png',
+    image: '/skins/skin-eae7c10fa54f.webp',
     name: 'Slaughter',
     weapon: 'Butterfly Knife',
     value: 14500,
@@ -436,7 +436,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-3bc3ff53883a',
-    image: '/skins/skin-3bc3ff53883a.png',
+    image: '/skins/skin-3bc3ff53883a.webp',
     name: 'Tiger Tooth',
     weapon: 'M9 Bayonet',
     value: 17000,
@@ -446,7 +446,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-90511e74f417',
-    image: '/skins/skin-90511e74f417.png',
+    image: '/skins/skin-90511e74f417.webp',
     name: 'Doppler',
     weapon: 'Flip Knife',
     value: 19500,
@@ -456,7 +456,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-a5ee841493d7',
-    image: '/skins/skin-a5ee841493d7.png',
+    image: '/skins/skin-a5ee841493d7.webp',
     name: 'Marble Fade',
     weapon: 'Gut Knife',
     value: 22000,
@@ -466,7 +466,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-243a437e4586',
-    image: '/skins/skin-243a437e4586.png',
+    image: '/skins/skin-243a437e4586.webp',
     name: 'Tiger Tooth',
     weapon: 'Huntsman Knife',
     value: 24500,
@@ -476,7 +476,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-9309cf0662b7',
-    image: '/skins/skin-9309cf0662b7.png',
+    image: '/skins/skin-9309cf0662b7.webp',
     name: 'Crimson Web',
     weapon: 'Bowie Knife',
     value: 27000,
@@ -486,7 +486,7 @@ export const skins = [
   },
   {
     id: 'cs2-skin-eb63179edd1a',
-    image: '/skins/skin-eb63179edd1a.png',
+    image: '/skins/skin-eb63179edd1a.webp',
     name: 'Fade',
     weapon: 'Falchion Knife',
     value: 29500,
@@ -563,3 +563,15 @@ export type Player = {
 }
 export const skinById = (id: string) => skins.find((s) => s.id === id)!
 export const format = (n: number) => n.toLocaleString('ru-RU')
+
+/** Chance of a successful upgrade, in percent (same formula as on the server). */
+export const upgradeChance = (from: number, to: number) =>
+  Math.min(75, (from / to) * 90)
+export type Tier = 'safe' | 'risk' | 'critical'
+export const chanceTier = (chance: number): Tier =>
+  chance >= 40 ? 'safe' : chance >= 20 ? 'risk' : 'critical'
+export const tierInfo: { id: Tier; label: string; range: string }[] = [
+  { id: 'safe', label: 'Надёжно', range: '40%+' },
+  { id: 'risk', label: 'Риск', range: '20–40%' },
+  { id: 'critical', label: 'Критически', range: '0–20%' },
+]

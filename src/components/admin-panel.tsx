@@ -4,6 +4,11 @@ import { format, skinById, skins, type Item } from '../lib/game'
 
 type PlayerRow = {
   id: string
+  tg_id: number | null
+  tg_verified: boolean
+  username: string | null
+  name: string | null
+  photo: string | null
   balance: number
   referrals: number
   created_at: string
@@ -18,6 +23,9 @@ export type JournalRow = {
   id: string
   type: 'crystals' | 'skin' | 'ban' | 'unban'
   target: string
+  target_username: string | null
+  target_name: string | null
+  target_photo: string | null
   details: {
     amount?: number
     skin?: string
@@ -25,6 +33,7 @@ export type JournalRow = {
     permanent?: boolean
     minutes?: number
     reason?: string
+    telegram?: boolean
   }
   created_at: string
 }
@@ -45,6 +54,41 @@ const skinLabel = (id: string) => {
   return s ? `${s.weapon} | ${s.name}` : id
 }
 const short = (id: string) => id.slice(0, 8)
+type Who = { username: string | null; name: string | null }
+// "Name" if known, else "@username", else the short ID.
+const title = (p: Who, id: string) =>
+  p.name || (p.username ? `@${p.username}` : short(id))
+
+function Avatar({
+  photo,
+  label,
+  size = 36,
+}: {
+  photo: string | null
+  label: string
+  size?: number
+}) {
+  const [broken, setBroken] = useState(false)
+  useEffect(() => setBroken(false), [photo])
+  const style = { width: size, height: size, fontSize: size * 0.42 }
+  if (photo && !broken)
+    return (
+      <img
+        className="dev-avatar"
+        style={style}
+        src={photo}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setBroken(true)}
+      />
+    )
+  return (
+    <span className="dev-avatar fallback" style={style} aria-hidden="true">
+      {(label.replace(/^@/, '')[0] || '?').toUpperCase()}
+    </span>
+  )
+}
 const isBanned = (p: PlayerRow) => p.ban_permanent || p.ban_seconds > 0
 function duration(seconds: number) {
   const d = Math.floor(seconds / 86400)
@@ -69,8 +113,8 @@ function journalText(row: JournalRow) {
   if (row.type === 'skin')
     return `Скин: ${skinLabel(d.skin ?? '')}${d.count && d.count > 1 ? ` ×${d.count}` : ''}`
   if (row.type === 'ban')
-    return `${d.permanent ? 'Бан навсегда' : `Бан на ${minutesLabel(d.minutes ?? 0)}`}${d.reason ? ` · ${d.reason}` : ''}`
-  return 'Разблокировка'
+    return `${d.permanent ? 'Бан навсегда' : `Бан на ${minutesLabel(d.minutes ?? 0)}`}${d.reason ? ` · ${d.reason}` : ''}${d.telegram ? ' · по Telegram ID' : ''}`
+  return d.telegram ? 'Разблокировка (по Telegram ID)' : 'Разблокировка'
 }
 
 export function AdminPanel({
@@ -257,6 +301,21 @@ export function AdminPanel({
           >
             <ArrowLeft size={15} /> К списку игроков
           </button>
+          <div className="dev-who">
+            <Avatar
+              photo={selected.photo}
+              label={title(selected, selected.id)}
+              size={56}
+            />
+            <div>
+              <strong>{title(selected, selected.id)}</strong>
+              {selected.username && selected.name && (
+                <span>@{selected.username}</span>
+              )}
+              {selected.tg_id && <small>Telegram ID: {selected.tg_id}</small>}
+              {!selected.tg_id && <small>Telegram не определён</small>}
+            </div>
+          </div>
           <div className="dev-id">
             <code>{selected.id}</code>
             <button
@@ -397,6 +456,11 @@ export function AdminPanel({
               }}
             >
               <h4>Блокировка</h4>
+              <p className="dev-hint">
+                {selected.tg_verified
+                  ? 'Бан привязан к Telegram-аккаунту: новые профили этого аккаунта (после очистки данных, с другого устройства) тоже заблокированы.'
+                  : 'Telegram-аккаунт не подтверждён (нужен секрет TELEGRAM_BOT_TOKEN и вход из Telegram): бан действует только на этот профиль.'}
+              </p>
               <select
                 value={banMinutes}
                 onChange={(e) => setBanMinutes(e.target.value)}
@@ -467,7 +531,7 @@ export function AdminPanel({
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="ID игрока (начало или целиком)"
+                  placeholder="Ник Telegram, имя или ID игрока"
                   autoComplete="off"
                 />
                 <button aria-label="Найти" className="secondary" disabled={busy}>
@@ -498,7 +562,16 @@ export function AdminPanel({
                 {players.map((p) => (
                   <li key={p.id}>
                     <button onClick={() => void openPlayer(p.id)}>
-                      <code>{short(p.id)}</code>
+                      <span className="dev-player">
+                        <Avatar photo={p.photo} label={title(p, p.id)} />
+                        <span className="dev-player-name">
+                          <b>{title(p, p.id)}</b>
+                          <code>
+                            {p.username && p.name ? `@${p.username} · ` : ''}
+                            {short(p.id)}
+                          </code>
+                        </span>
+                      </span>
                       <span className="dev-balance">
                         {format(p.balance)} <Gem size={12} />
                       </span>
@@ -538,7 +611,22 @@ export function AdminPanel({
                 journal.map((row) => (
                   <li key={`${row.type}-${row.id}`}>
                     <span>{journalText(row)}</span>
-                    <code>{short(row.target)}</code>
+                    <span className="dev-journal-who">
+                      <Avatar
+                        photo={row.target_photo}
+                        label={title(
+                          { username: row.target_username, name: row.target_name },
+                          row.target,
+                        )}
+                        size={22}
+                      />
+                      <code>
+                        {title(
+                          { username: row.target_username, name: row.target_name },
+                          row.target,
+                        )}
+                      </code>
+                    </span>
                     <small>
                       {new Date(row.created_at).toLocaleString('ru-RU')}
                     </small>

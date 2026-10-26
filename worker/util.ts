@@ -57,6 +57,22 @@ export async function hmacHex(secret: string, message: string): Promise<string> 
   )
   return hex(await crypto.subtle.sign('HMAC', key, encoder.encode(message)))
 }
+/** HMAC-SHA256 with a raw (binary or text) key; returns the raw signature. */
+export async function hmacRaw(
+  key: string | ArrayBuffer,
+  message: string,
+): Promise<ArrayBuffer> {
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    typeof key === 'string' ? encoder.encode(key) : key,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  return crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message))
+}
+export const toHex = hex
+
 /** Constant-time comparison (both values are hashed first, so lengths do not leak). */
 export async function safeEqual(a: string, b: string): Promise<boolean> {
   const [x, y] = await Promise.all([sha256Hex(a), sha256Hex(b)])

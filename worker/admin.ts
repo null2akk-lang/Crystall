@@ -33,19 +33,31 @@ const adminCookie = (value: string, maxAge: number) =>
 async function journal(db: D1Database, operator: string) {
   const { results } = await db
     .prepare(
-      `SELECT id, type, target, details, created_at FROM (
+      `SELECT j.id, j.type, j.target, j.details, j.created_at, p.tg_username, p.tg_name, p.tg_photo FROM (
         SELECT id, 'crystals' AS type, recipient AS target, json_object('amount', amount) AS details, created_at
           FROM crystal_grants WHERE operator = ?
         UNION ALL
         SELECT id, type, target, details, created_at FROM admin_actions WHERE operator = ?
-      ) ORDER BY created_at DESC LIMIT 40`,
+      ) j LEFT JOIN players p ON p.id = j.target ORDER BY j.created_at DESC LIMIT 40`,
     )
     .bind(operator, operator)
-    .all<{ id: string; type: string; target: string; details: string; created_at: number }>()
+    .all<{
+      id: string
+      type: string
+      target: string
+      details: string
+      created_at: number
+      tg_username: string | null
+      tg_name: string | null
+      tg_photo: string | null
+    }>()
   return results.map((r) => ({
     id: r.id,
     type: r.type,
     target: r.target,
+    target_username: r.tg_username,
+    target_name: r.tg_name,
+    target_photo: r.tg_photo,
     details: JSON.parse(r.details || '{}'),
     created_at: iso(r.created_at),
   }))
@@ -53,6 +65,11 @@ async function journal(db: D1Database, operator: string) {
 
 const playerView = (p: PlayerRow & { items: number }, now: number) => ({
   id: p.id,
+  tg_id: p.tg_id,
+  tg_verified: Boolean(p.tg_verified),
+  username: p.tg_username,
+  name: p.tg_name,
+  photo: p.tg_photo,
   balance: p.balance,
   referrals: p.referrals,
   created_at: iso(p.created_at),
@@ -63,7 +80,7 @@ const playerView = (p: PlayerRow & { items: number }, now: number) => ({
   ban_seconds: banSeconds(p, now),
 })
 const PLAYER_COLUMNS =
-  'id, balance, referrals, created_at, last_seen, json_array_length(inventory) AS items, ban_permanent, ban_reason, banned_until'
+  'id, tg_id, tg_verified, tg_username, tg_name, tg_photo, balance, referrals, created_at, last_seen, json_array_length(inventory) AS items, ban_permanent, ban_reason, banned_until'
 
 export async function handleAdmin(req: Request, env: Env): Promise<Response> {
   if (req.method !== 'POST') return json({ error: 'Метод не поддерживается' }, 405)
@@ -268,13 +285,29 @@ export async function handleAdmin(req: Request, env: Env): Promise<Response> {
         throw new AdminError('Срок блокировки: от 1 минуты до 365 дней')
       const reason =
         typeof body.reason === 'string' ? body.reason.trim().slice(0, 200) : ''
-      await loadPlayer(recipient)
+      const target = await loadPlayer(recipient)
+      // Only a signature-verified Telegram account carries the ban to other profiles.
+      const linked = Boolean(target.tg_verified && target.tg_id)
+      if (linked) {
+        const me = await loadPlayer(operator)
+        if (me.tg_verified && me.tg_id === target.tg_id)
+          throw new AdminError('Нельзя заблокировать самого себя')
+      }
+      const until = permanent ? null : now + minutes * 60
       await db.batch([
+        // This profile and every other profile of the same verified Telegram account.
         db
           .prepare(
-            'UPDATE players SET ban_permanent = ?, banned_until = ?, ban_reason = ? WHERE id = ?',
+            `UPDATE players SET ban_permanent = ?, banned_until = ?, ban_reason = ?
+              WHERE id = ? OR (? = 1 AND tg_verified = 1 AND tg_id = ?)`,
           )
-          .bind(permanent ? 1 : 0, permanent ? null : now + minutes * 60, reason || null, recipient),
+          .bind(permanent ? 1 : 0, until, reason || null, recipient, linked ? 1 : 0, target.tg_id),
+        db
+          .prepare(
+            `INSERT OR REPLACE INTO tg_bans (tg_id, banned_until, ban_permanent, ban_reason, created_at)
+              SELECT tg_id, ?, ?, ?, ? FROM players WHERE id = ? AND tg_verified = 1 AND tg_id IS NOT NULL`,
+          )
+          .bind(until, permanent ? 1 : 0, reason || null, now, recipient),
         db
           .prepare(
             `INSERT INTO admin_actions (id, operator, target, type, details, created_at) VALUES (?, ?, ?, 'ban', ?, ?)`,
@@ -283,30 +316,38 @@ export async function handleAdmin(req: Request, env: Env): Promise<Response> {
             crypto.randomUUID(),
             operator,
             recipient,
-            JSON.stringify({ permanent, minutes, reason }),
+            JSON.stringify({ permanent, minutes, reason, telegram: linked }),
             now,
           ),
       ])
     } else if (body.action === 'unban') {
       const recipient = recipientId()
-      await loadPlayer(recipient)
+      const target = await loadPlayer(recipient)
+      const linked = Boolean(target.tg_verified && target.tg_id)
       await db.batch([
         db
           .prepare(
-            'UPDATE players SET ban_permanent = 0, banned_until = NULL, ban_reason = NULL WHERE id = ?',
+            `UPDATE players SET ban_permanent = 0, banned_until = NULL, ban_reason = NULL
+              WHERE id = ? OR (? = 1 AND tg_verified = 1 AND tg_id = ?)`,
           )
-          .bind(recipient),
+          .bind(recipient, linked ? 1 : 0, target.tg_id),
+        db
+          .prepare('DELETE FROM tg_bans WHERE ? = 1 AND tg_id = ?')
+          .bind(linked ? 1 : 0, target.tg_id),
         db
           .prepare(
-            `INSERT INTO admin_actions (id, operator, target, type, details, created_at) VALUES (?, ?, ?, 'unban', '{}', ?)`,
+            `INSERT INTO admin_actions (id, operator, target, type, details, created_at) VALUES (?, ?, ?, 'unban', ?, ?)`,
           )
-          .bind(crypto.randomUUID(), operator, recipient, now),
+          .bind(crypto.randomUUID(), operator, recipient, JSON.stringify({ telegram: linked }), now),
       ])
     } else if (body.action === 'players') {
-      const search =
+      // Search by ID (beginning), Telegram @username, name or numeric Telegram ID.
+      const query =
         typeof body.search === 'string'
-          ? body.search.toLowerCase().replace(/[^0-9a-f-]/g, '').slice(0, 36)
+          ? body.search.trim().replace(/^@/, '').toLowerCase().slice(0, 64)
           : ''
+      const idPrefix = /^[0-9a-f-]+$/.test(query) ? query.slice(0, 36) : ''
+      const pattern = `%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`
       const offset =
         Number.isSafeInteger(body.offset) && body.offset > 0
           ? Math.min(body.offset, 100000)
@@ -314,11 +355,13 @@ export async function handleAdmin(req: Request, env: Env): Promise<Response> {
       const { results } = await db
         .prepare(
           `SELECT ${PLAYER_COLUMNS} FROM players
-            WHERE (? = '' OR id LIKE ? || '%')
+            WHERE (? = '' OR (? <> '' AND id LIKE ? || '%')
+              OR tg_search LIKE ? ESCAPE '\\'
+              OR CAST(tg_id AS TEXT) = ?)
             ORDER BY COALESCE(last_seen, created_at) DESC
             LIMIT 50 OFFSET ?`,
         )
-        .bind(search, search, offset)
+        .bind(query, idPrefix, idPrefix, pattern, query, offset)
         .all<PlayerRow & { items: number }>()
       const stats = await db
         .prepare(

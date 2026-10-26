@@ -22,4 +22,6 @@ export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
   /** Optional: overrides the built-in test access code of the developer panel. */
   CRYSTAL_ADMIN_CODE?: string
+  /** Optional: Telegram bot token. With it, player names/photos are verified by signature. */
+  TELEGRAM_BOT_TOKEN?: string
 }

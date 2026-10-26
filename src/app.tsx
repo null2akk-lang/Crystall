@@ -17,7 +17,17 @@ import {
   RefreshCw,
   Ban,
 } from 'lucide-react'
-import { cases, skins, skinById, format, type Player } from './lib/game'
+import {
+  cases,
+  skins,
+  skinById,
+  format,
+  chanceTier,
+  tierInfo,
+  upgradeChance,
+  type Player,
+  type Tier,
+} from './lib/game'
 import { AdminPanel, type JournalRow } from './components/admin-panel'
 
 type Tab = 'cases' | 'upgrade' | 'inventory'
@@ -31,14 +41,28 @@ function Weapon({
   className?: string
 }) {
   const item = skinById(skin)
+  // A failed download is retried (with a cache-busting suffix) before giving up.
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => setAttempt(0), [item.image])
+  if (attempt > 3)
+    return (
+      <span
+        className={`weapon weapon-missing ${className}`}
+        role="img"
+        aria-label={`${item.weapon} | ${item.name}`}
+      >
+        {item.weapon}
+      </span>
+    )
   return (
     <img
       className={`weapon ${className}`}
-      src={item.image}
+      src={attempt ? `${item.image}?retry=${attempt}` : item.image}
       alt={`${item.weapon} | ${item.name}`}
       width={420}
       height={280}
-      loading="lazy"
+      decoding="async"
+      onError={() => setTimeout(() => setAttempt((n) => n + 1), 500 * (attempt + 1))}
     />
   )
 }
@@ -100,6 +124,11 @@ export function Home() {
   const [selected, setSelected] = useState('')
   const [target, setTarget] = useState('')
   const [copied, setCopied] = useState(false)
+  const [tier, setTier] = useState<Tier | 'all'>('all')
+  const [wheel, setWheel] = useState<{
+    angle: number
+    phase: 'idle' | 'wait' | 'spin'
+  }>({ angle: 0, phase: 'idle' })
   const initialized = useRef(false)
   const dialogRef = useRef<HTMLElement>(null)
   const box = cases.find((c) => c.id === boxId)
@@ -108,12 +137,23 @@ export function Home() {
   const targetSkin = skins.find((s) => s.id === target)
   const chance =
     source && targetSkin && targetSkin.value > source.value
-      ? Math.min(75, (source.value / targetSkin.value) * 90)
+      ? upgradeChance(source.value, targetSkin.value)
       : 0
+  const targets = source
+    ? skins
+        .filter((s) => s.value > source.value)
+        .map((s) => ({ skin: s, chance: upgradeChance(source.value, s.value) }))
+    : skins.map((s) => ({ skin: s, chance: 0 }))
+  const tierCount = (t: Tier) =>
+    targets.filter((x) => chanceTier(x.chance) === t).length
+  const shownTargets = source && tier !== 'all'
+    ? targets.filter((x) => chanceTier(x.chance) === tier)
+    : targets
 
   async function call(action: string, data: Record<string, unknown> = {}) {
     setError('')
     setBusy(true)
+    if (action === 'upgrade') setWheel((w) => ({ ...w, phase: 'wait' }))
     try {
       const res = await fetch('/api/game', {
         method: 'POST',
@@ -121,6 +161,10 @@ export function Home() {
         body: JSON.stringify({
           action,
           ref: new URLSearchParams(window.location.search).get('ref'),
+          // Signed Telegram profile data (empty outside Telegram).
+          initData:
+            (window as Window & { Telegram?: { WebApp?: { initData?: string } } })
+              .Telegram?.WebApp?.initData || undefined,
           ...data,
         }),
       })
@@ -138,7 +182,8 @@ export function Home() {
       if (!res.ok)
         throw new Error(result.error || 'Не удалось выполнить действие')
       setBan(null)
-      setPlayer(result.player)
+      // After an upgrade the new inventory appears once the wheel has stopped.
+      if (!(action === 'upgrade' && result.outcome)) setPlayer(result.player)
       if (result.welcome)
         setNotice('Добро пожаловать! На вашем балансе +1 000 кристаллов.')
       if (result.outcome) {
@@ -162,6 +207,25 @@ export function Home() {
           )
           setReel(null)
         }
+        if (action === 'upgrade') {
+          const sector = chance * 3.6
+          const win = Boolean(result.outcome.won)
+          // The arrow stops inside the green sector on success, outside it on failure.
+          const from = win ? sector * 0.12 : sector + (360 - sector) * 0.06
+          const to = win ? sector * 0.88 : 360 - (360 - sector) * 0.06
+          const stop = from + Math.random() * (to - from)
+          const reduced = window.matchMedia(
+            '(prefers-reduced-motion: reduce)',
+          ).matches
+          setWheel((w) => ({
+            angle: w.angle - (w.angle % 360) + 360 * 5 + stop,
+            phase: 'spin',
+          }))
+          await new Promise((resolve) =>
+            setTimeout(resolve, reduced ? 300 : 4800),
+          )
+          setPlayer(result.player)
+        }
         if (action === 'promo') {
           setPromoCode('')
           setModal(null)
@@ -180,6 +244,7 @@ export function Home() {
     } finally {
       setBusy(false)
       setLoading(false)
+      setWheel((w) => ({ ...w, phase: 'idle' }))
     }
   }
   async function adminCall(action: 'login' | 'status' | 'logout') {
@@ -247,6 +312,8 @@ export function Home() {
     telegram?.expand()
     telegram?.setHeaderColor('#14161b')
     telegram?.setBackgroundColor('#111317')
+    // Warm up all skin pictures so none of them pops in late (or not at all).
+    for (const s of skins) new Image().src = s.image
     void call('state')
   }, [])
   useEffect(() => {
@@ -591,13 +658,20 @@ export function Home() {
                     </>
                   )}
                 </div>
-                <div className={`chance-wheel ${busy ? 'rolling' : ''}`}>
+                <div
+                  className={`chance-wheel tier-${chance ? chanceTier(chance) : 'none'} ${wheel.phase === 'wait' ? 'rolling' : ''}`}
+                  style={{ '--chance': `${chance}%` } as React.CSSProperties}
+                >
                   <span>
                     {chance ? chance.toFixed(1) : '0'}
                     <small>%</small>
                   </span>
                   <p>ШАНС УСПЕХА</p>
-                  <ArrowUpRight size={22} />
+                  <div
+                    className={`wheel-arrow ${wheel.phase === 'spin' ? 'spinning' : ''}`}
+                    style={{ transform: `rotate(${wheel.angle}deg)` }}
+                    aria-hidden="true"
+                  />
                 </div>
                 <div className="upgrade-slot">
                   {targetSkin ? (
@@ -628,7 +702,11 @@ export function Home() {
                     void call('upgrade', { uid: selected, target })
                   }
                 >
-                  {busy ? 'Рассчитываем результат…' : 'Улучшить скин'}
+                  {wheel.phase === 'spin'
+                    ? 'Крутим колесо…'
+                    : busy
+                      ? 'Рассчитываем результат…'
+                      : 'Улучшить скин'}
                   <ArrowUpRight size={18} />
                 </button>
                 <p>
@@ -684,25 +762,62 @@ export function Home() {
                 </section>
                 <section>
                   <h3>Цель апгрейда</h3>
+                  <div className="tier-filter" role="group" aria-label="Шанс успеха">
+                    <button
+                      className={`tier-chip ${tier === 'all' ? 'active' : ''}`}
+                      aria-pressed={tier === 'all'}
+                      onClick={() => setTier('all')}
+                    >
+                      Все
+                    </button>
+                    {tierInfo.map((t) => (
+                      <button
+                        key={t.id}
+                        className={`tier-chip tier-${t.id} ${tier === t.id ? 'active' : ''}`}
+                        aria-pressed={tier === t.id}
+                        disabled={!source}
+                        onClick={() => setTier(t.id)}
+                      >
+                        {t.label}
+                        <small>
+                          {t.range}
+                          {source ? ` · ${tierCount(t.id)}` : ''}
+                        </small>
+                      </button>
+                    ))}
+                  </div>
+                  {!source && (
+                    <p className="muted tier-hint">
+                      Выбери свой скин, чтобы увидеть шансы и отфильтровать цели.
+                    </p>
+                  )}
+                  {source && !shownTargets.length && (
+                    <p className="muted tier-hint">
+                      В этой категории нет целей для выбранного скина.
+                    </p>
+                  )}
                   <div className="skin-grid">
-                    {skins
-                      .filter((s) => !source || s.value > source.value)
-                      .map((s) => (
-                        <button
-                          className={`skin-card ${target === s.id ? 'selected' : ''}`}
-                          key={s.id}
-                          disabled={!source}
-                          onClick={() => setTarget(s.id)}
-                        >
-                          <Weapon skin={s.id} />
-                          <small>{s.weapon}</small>
-                          <strong>{s.name}</strong>
-                          <span className="price">
-                            <Gem size={13} />
-                            {format(s.value)}
-                          </span>
-                        </button>
-                      ))}
+                    {shownTargets.map(({ skin: s, chance: c }) => (
+                      <button
+                        className={`skin-card ${target === s.id ? 'selected' : ''}`}
+                        key={s.id}
+                        disabled={!source}
+                        onClick={() => setTarget(s.id)}
+                      >
+                        {source && (
+                          <em className={`chance-badge tier-${chanceTier(c)}`}>
+                            {c.toFixed(c < 10 ? 1 : 0)}%
+                          </em>
+                        )}
+                        <Weapon skin={s.id} />
+                        <small>{s.weapon}</small>
+                        <strong>{s.name}</strong>
+                        <span className="price">
+                          <Gem size={13} />
+                          {format(s.value)}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </section>
               </div>

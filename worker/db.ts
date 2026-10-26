@@ -16,7 +16,21 @@ const SCHEMA = [
     ban_permanent INTEGER NOT NULL DEFAULT 0,
     ban_reason TEXT,
     last_seen INTEGER,
-    version INTEGER NOT NULL DEFAULT 0
+    version INTEGER NOT NULL DEFAULT 0,
+    tg_id INTEGER,
+    tg_username TEXT,
+    tg_name TEXT,
+    tg_photo TEXT,
+    tg_search TEXT,
+    tg_verified INTEGER NOT NULL DEFAULT 0
+  )`,
+  // Bans that follow a (signature-verified) Telegram account across profiles.
+  `CREATE TABLE IF NOT EXISTS tg_bans (
+    tg_id INTEGER PRIMARY KEY,
+    banned_until INTEGER,
+    ban_permanent INTEGER NOT NULL DEFAULT 0,
+    ban_reason TEXT,
+    created_at INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS admin_attempts (
     key TEXT PRIMARY KEY,
@@ -45,6 +59,31 @@ const SCHEMA = [
   )`,
 ]
 
+// Databases created before Telegram profiles existed get the new columns here.
+const TELEGRAM_COLUMNS = [
+  'tg_id INTEGER',
+  'tg_username TEXT',
+  'tg_name TEXT',
+  'tg_photo TEXT',
+  'tg_search TEXT',
+  'tg_verified INTEGER NOT NULL DEFAULT 0',
+]
+async function addTelegramColumns(db: D1Database): Promise<void> {
+  try {
+    await db.prepare('SELECT tg_id, tg_username, tg_name, tg_photo, tg_search, tg_verified FROM players LIMIT 1').all()
+    return
+  } catch {
+    // Old table without the columns: add them one by one.
+  }
+  for (const column of TELEGRAM_COLUMNS) {
+    try {
+      await db.prepare(`ALTER TABLE players ADD COLUMN ${column}`).run()
+    } catch (error) {
+      if (!/duplicate column/i.test(String(error))) throw error
+    }
+  }
+}
+
 const ready = new WeakMap<D1Database, Promise<void>>()
 /** Creates the tables on first use (safe to run repeatedly). */
 export function ensureSchema(db: D1Database): Promise<void> {
@@ -52,7 +91,7 @@ export function ensureSchema(db: D1Database): Promise<void> {
   if (!promise) {
     promise = db
       .batch(SCHEMA.map((sql) => db.prepare(sql)))
-      .then(() => undefined)
+      .then(() => addTelegramColumns(db))
       .catch((error) => {
         ready.delete(db)
         throw error
@@ -75,6 +114,12 @@ export type PlayerRow = {
   ban_reason: string | null
   last_seen: number | null
   version: number
+  tg_id: number | null
+  tg_username: string | null
+  tg_name: string | null
+  tg_photo: string | null
+  tg_search: string | null
+  tg_verified: number
 }
 export const parseInventory = (text: string): Item[] => {
   try {
@@ -87,3 +132,20 @@ export const parseInventory = (text: string): Item[] => {
 /** Seconds of an active temporary ban (0 when none). */
 export const banSeconds = (row: Pick<PlayerRow, 'banned_until'>, now: number) =>
   row.banned_until && row.banned_until > now ? row.banned_until - now : 0
+
+type BanFields = {
+  ban_permanent: number
+  banned_until: number | null
+  ban_reason: string | null
+}
+/** The stronger of two bans (permanent wins, otherwise the one that lasts longer). */
+export function strongerBan(a: BanFields, b: BanFields, now: number) {
+  const pick = (x: BanFields) => ({
+    permanent: Boolean(x.ban_permanent),
+    seconds: banSeconds(x, now),
+    reason: x.ban_reason,
+  })
+  const [x, y] = [pick(a), pick(b)]
+  if (x.permanent !== y.permanent) return x.permanent ? x : y
+  return x.seconds >= y.seconds ? x : y
+}

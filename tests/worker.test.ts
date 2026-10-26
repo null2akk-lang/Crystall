@@ -302,6 +302,106 @@ await test('CRYSTAL_ADMIN_CODE overrides the built-in code', async () => {
   assert.equal((await c.admin({ action: 'login', code: 'other-secret' })).status, 200)
   delete env.CRYSTAL_ADMIN_CODE
 })
+// ---- Telegram profiles ----
+async function makeInitData(token: string, user: object, authDate = Math.floor(Date.now() / 1000)) {
+  const params = new URLSearchParams({ auth_date: String(authDate), query_id: 'AAH', user: JSON.stringify(user) })
+  const data = [...params.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, v]) => `${k}=${v}`).join('\n')
+  const hmac = async (key: BufferSource, msg: string) =>
+    new Uint8Array(
+      await crypto.subtle.sign('HMAC', await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']), new TextEncoder().encode(msg)),
+    )
+  const secret = await hmac(new TextEncoder().encode('WebAppData'), token)
+  const hash = [...(await hmac(secret, data))].map((b) => b.toString(16).padStart(2, '0')).join('')
+  params.set('hash', hash)
+  return params.toString()
+}
+const tgUser = { id: 4242, first_name: 'Иван', last_name: 'Петров', username: 'ivan_p', photo_url: 'https://t.me/i/userpic/320/ivan.jpg' }
+const operator = new Client('5.5.5.5')
+await test('telegram: nick and photo are stored and shown in the developer panel', async () => {
+  await operator.game({ action: 'state' })
+  assert.equal((await operator.admin({ action: 'login', code: 'Sundet_2010' })).status, 200)
+  const c = new Client('5.5.5.6')
+  const initData = await makeInitData('123:TOKEN', tgUser)
+  const r = await c.game({ action: 'state', initData })
+  assert.equal(r.status, 200)
+  const list = await operator.admin({ action: 'players' })
+  const me = list.data.players.find((p: any) => p.id === r.data.player.id)
+  assert.equal(me.username, 'ivan_p')
+  assert.equal(me.name, 'Иван Петров')
+  assert.equal(me.photo, tgUser.photo_url)
+  assert.equal(me.tg_id, 4242)
+  assert.equal((await operator.admin({ action: 'player', recipient: me.id })).data.player.username, 'ivan_p')
+  for (const q of ['@ivan_p', 'ivan', 'петров', '4242'])
+    assert.ok((await operator.admin({ action: 'players', search: q })).data.players.some((p: any) => p.id === me.id), q)
+  assert.equal((await operator.admin({ action: 'players', search: '%' })).data.players.length, 0)
+  await operator.admin({ action: 'grant', recipient: me.id, amount: 5, requestId: crypto.randomUUID() })
+  const j = (await operator.admin({ action: 'status' })).data.journal[0]
+  assert.equal(j.target_username, 'ivan_p')
+})
+await test('telegram: with a bot token forged or stale data is ignored', async () => {
+  env.TELEGRAM_BOT_TOKEN = '123:TOKEN'
+  const good = new Client('5.5.5.7')
+  const forged = new Client('5.5.5.8')
+  const stale = new Client('5.5.5.9')
+  const ok = await good.game({ action: 'state', initData: await makeInitData('123:TOKEN', { ...tgUser, id: 1, username: 'good_one' }) })
+  const bad = await forged.game({ action: 'state', initData: await makeInitData('999:OTHER', { ...tgUser, id: 2, username: 'forged' }) })
+  const old = await stale.game({ action: 'state', initData: await makeInitData('123:TOKEN', { ...tgUser, id: 3, username: 'stale' }, 1000) })
+  const all = (await operator.admin({ action: 'players' })).data.players
+  assert.equal(all.find((p: any) => p.id === ok.data.player.id).username, 'good_one')
+  assert.equal(all.find((p: any) => p.id === bad.data.player.id).username, null)
+  assert.equal(all.find((p: any) => p.id === old.data.player.id).username, null)
+  assert.equal(bad.status, 200) // the game itself still works
+  delete env.TELEGRAM_BOT_TOKEN
+})
+await test('telegram: an older database without the new columns is upgraded', async () => {
+  const { ensureSchema } = await import('../worker/db')
+  const old = createD1()
+  await old.prepare('CREATE TABLE players (id TEXT PRIMARY KEY, session TEXT NOT NULL UNIQUE, balance INTEGER NOT NULL DEFAULT 1000, inventory TEXT NOT NULL DEFAULT \'[]\', referrals INTEGER NOT NULL DEFAULT 0, referrer TEXT, created_at INTEGER NOT NULL, banned_until INTEGER, ban_permanent INTEGER NOT NULL DEFAULT 0, ban_reason TEXT, last_seen INTEGER, version INTEGER NOT NULL DEFAULT 0)').run()
+  await ensureSchema(old)
+  await old.prepare('SELECT tg_id, tg_username, tg_name, tg_photo FROM players').all()
+})
+await test('telegram ban: follows the verified account to a new profile', async () => {
+  env.TELEGRAM_BOT_TOKEN = '123:TOKEN'
+  const user = { id: 777, first_name: 'Bad', username: 'bad_guy' }
+  const first = new Client('4.4.4.1')
+  const r1 = await first.game({ action: 'state', initData: await makeInitData('123:TOKEN', user) })
+  const firstId = r1.data.player.id
+  const ban = await operator.admin({ action: 'ban', recipient: firstId, mode: 'permanent', reason: 'cheat' })
+  assert.equal(ban.status, 200)
+  // same Telegram account, cookies cleared: a brand new profile is blocked at once
+  const second = new Client('4.4.4.2')
+  const r2 = await second.game({ action: 'state', initData: await makeInitData('123:TOKEN', user) })
+  assert.equal(r2.status, 403)
+  assert.equal(r2.data.banned, true)
+  assert.equal(r2.data.permanent, true)
+  assert.equal(r2.data.reason, 'cheat')
+  const list = (await operator.admin({ action: 'players' })).data.players
+  assert.equal(list.find((p: any) => p.id === r2.data.playerId).ban_permanent, true)
+  // another Telegram account is not affected
+  const other = new Client('4.4.4.3')
+  assert.equal((await other.game({ action: 'state', initData: await makeInitData('123:TOKEN', { id: 778, first_name: 'Ok' }) })).status, 200)
+  // a forged initData cannot be used to carry (or dodge) the ban
+  const forged = new Client('4.4.4.4')
+  assert.equal((await forged.game({ action: 'state', initData: await makeInitData('999:OTHER', user) })).status, 200)
+  // unban from any of the profiles clears all of them
+  assert.equal((await operator.admin({ action: 'unban', recipient: r2.data.playerId })).status, 200)
+  assert.equal((await first.game({ action: 'state' })).status, 200)
+  assert.equal((await second.game({ action: 'state', initData: await makeInitData('123:TOKEN', user) })).status, 200)
+  const third = new Client('4.4.4.5')
+  assert.equal((await third.game({ action: 'state', initData: await makeInitData('123:TOKEN', user) })).status, 200)
+  delete env.TELEGRAM_BOT_TOKEN
+})
+await test('telegram ban: unverified Telegram data never bans other profiles', async () => {
+  const victimLike = { id: 9001, first_name: 'Spoof' }
+  const a = new Client('4.4.5.1')
+  const ra = await a.game({ action: 'state', initData: await makeInitData('x', victimLike) }) // no token: unverified
+  assert.equal((await operator.admin({ action: 'ban', recipient: ra.data.player.id, mode: 'permanent' })).status, 200)
+  env.TELEGRAM_BOT_TOKEN = '123:TOKEN'
+  const victim = new Client('4.4.5.2')
+  assert.equal((await victim.game({ action: 'state', initData: await makeInitData('123:TOKEN', victimLike) })).status, 200)
+  delete env.TELEGRAM_BOT_TOKEN
+  assert.equal((await a.game({ action: 'state' })).status, 403) // the cookie profile itself stays banned
+})
 await test('static files fall through to ASSETS, unknown api is 404', async () => {
   const res = await worker.fetch(new Request(ORIGIN + '/index.html'), env)
   assert.equal(await res.text(), 'asset')
