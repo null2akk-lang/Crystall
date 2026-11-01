@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 384" role="img" aria-label="glove-driver-crimson-weave">
+<defs>
+<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a3122a"/><stop offset="1" stop-color="#3a0710"/></linearGradient>
+<linearGradient id="fd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a3122a"/><stop offset=".5" stop-color="#f0c9a0"/><stop offset="1" stop-color="#3a0710"/></linearGradient>
+<clipPath id="shape"><use href="#glove"/></clipPath>
+<g id="glove">
+<rect x="150" y="215" width="200" height="120" rx="26"/>
+<rect x="150" y="100" width="42" height="150" rx="21" transform="rotate(-6 171 175)"/>
+<rect x="198" y="75" width="44" height="175" rx="22" transform="rotate(-2 220 160)"/>
+<rect x="248" y="72" width="44" height="178" rx="22" transform="rotate(2 270 160)"/>
+<rect x="298" y="90" width="42" height="160" rx="21" transform="rotate(7 319 170)"/>
+<rect x="85" y="205" width="48" height="125" rx="24" transform="rotate(-48 109 267)"/>
+<rect x="140" y="215" width="220" height="130" rx="24"/>
+</g>
+</defs>
+<g transform="rotate(-18 256 192) translate(16 -6)">
+<g fill="#00000040" transform="translate(10 16)"><use href="#glove"/></g>
+<g fill="url(#g)"><use href="#glove"/></g>
+<g clip-path="url(#shape)"><path d="M110 100 L170 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M170 100 L110 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M154 100 L214 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M214 100 L154 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M198 100 L258 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M258 100 L198 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M242 100 L302 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M302 100 L242 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M286 100 L346 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M346 100 L286 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M330 100 L390 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/><path d="M390 100 L330 310" stroke="#f0c9a0" stroke-width="5" opacity=".55"/></g>
+<g fill="none" stroke="#00000055" stroke-width="3"><use href="#glove"/></g>
+<rect x="138" y="318" width="224" height="46" rx="14" fill="#3a0710" stroke="#00000055" stroke-width="3"/>
+<rect x="138" y="318" width="224" height="12" rx="6" fill="#ffffff22"/>
+</g>
+</svg>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import {
   Box,
   ArrowUpRight,
@@ -19,6 +19,8 @@ import {
 } from 'lucide-react'
 import {
   cases,
+  caseGroups,
+  premiumChance,
   skins,
   skinById,
   format,
@@ -95,7 +97,7 @@ function CaseArt({ color, index }: { color: string; index: number }) {
         <path d="M193 90L201 84L210 87L202 101Z" fill="#27352a" />
         <path d="M52 96L135 140L271 114" stroke="#8b9595" strokeWidth="3" />
       </svg>
-      <span className="case-serial">CD / 0{index + 1}</span>
+      <span className="case-serial">CD / {String(index + 1).padStart(2, '0')}</span>
     </div>
   )
 }
@@ -566,7 +568,8 @@ export function Home() {
                   <div>
                     <span className="eyebrow">ВЫБЕРИ СВОЙ ДРОП</span>
                     <h2>
-                      Магазин кейсов <span>04</span>
+                      Магазин кейсов{' '}
+                      <span>{String(cases.length).padStart(2, '0')}</span>
                     </h2>
                   </div>
                   <div className="collection-label">
@@ -575,34 +578,45 @@ export function Home() {
                 </div>
                 <div className="cases-grid">
                   {cases.map((c, i) => (
-                    <button
-                      key={c.id}
-                      className="case-card"
-                      style={{ '--case': c.color } as React.CSSProperties}
-                      onClick={() => {
-                        setError('')
-                        setBoxId(c.id)
-                      }}
-                    >
-                      <div className="case-top">
-                        <span className="case-tag">{c.tag}</span>
-                        <ArrowUpRight size={17} />
-                      </div>
-                      <CaseArt color={c.color} index={i} />
-                      <div className="case-info">
-                        <h3>{c.name}</h3>
-                        <p>{c.subtitle}</p>
-                        <div className="case-bottom">
+                    <Fragment key={c.id}>
+                      {(i === 0 || cases[i - 1].group !== c.group) && (
+                        <div className="cases-group-title">
+                          <strong>
+                            {caseGroups.find((g) => g.id === c.group)?.label}
+                          </strong>
                           <span>
-                            <Gem size={15} />
-                            {format(c.price)}
-                          </span>
-                          <span className="case-open">
-                            Открыть <ArrowRight size={15} />
+                            {caseGroups.find((g) => g.id === c.group)?.hint}
                           </span>
                         </div>
-                      </div>
-                    </button>
+                      )}
+                      <button
+                        className="case-card"
+                        style={{ '--case': c.color } as React.CSSProperties}
+                        onClick={() => {
+                          setError('')
+                          setBoxId(c.id)
+                        }}
+                      >
+                        <div className="case-top">
+                          <span className="case-tag">{c.tag}</span>
+                          <ArrowUpRight size={17} />
+                        </div>
+                        <CaseArt color={c.color} index={i} />
+                        <div className="case-info">
+                          <h3>{c.name}</h3>
+                          <p>{c.subtitle}</p>
+                          <div className="case-bottom">
+                            <span>
+                              <Gem size={15} />
+                              {format(c.price)}
+                            </span>
+                            <span className="case-open">
+                              Открыть <ArrowRight size={15} />
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    </Fragment>
                   ))}
                 </div>
               </section>
@@ -1026,11 +1040,18 @@ export function Home() {
                   </div>
                 )}
                 <p className="modal-note">
-                  50 скинов · Суммарный шанс ножа — 1%
+                  {box.drops.length} скинов ·{' '}
+                  {premiumChance(box.drops) > 0
+                    ? `Суммарный шанс ножа или перчаток — ${format(premiumChance(box.drops))}%`
+                    : 'Без ножей и перчаток'}
                 </p>
                 <h3>Что может выпасть</h3>
                 <div className="drop-list">
-                  {box.drops.map((d) => {
+                  {[...box.drops]
+                    .sort(
+                      (a, b) => skinById(b.skin).value - skinById(a.skin).value,
+                    )
+                    .map((d) => {
                     const s = skinById(d.skin)
                     return (
                       <div key={d.skin}>

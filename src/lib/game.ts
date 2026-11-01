@@ -1,4 +1,4 @@
-export const skins = [
+const baseSkins = [
   {
     id: 'slate',
     image: '/skins/slate.webp',
@@ -496,64 +496,257 @@ export const skins = [
   },
 ] as const
 
-export const isKnife = (skin: (typeof skins)[number]) =>
-  'knife' in skin && skin.knife === true
-function dropsFor(tier: number) {
-  const guns = skins.filter((s) => !isKnife(s))
-  const knives = skins.filter(isKnife)
-  const scores = guns.map(
-    (s) => 1 / Math.pow(Math.max(s.value, 30), [0.95, 0.65, 0.35, 0][tier]),
-  )
-  const sum = scores.reduce((a, b) => a + b, 0)
-  const weights = scores.map((score) => Math.floor((score / sum) * 9900))
-  weights[0] += 9900 - weights.reduce((a, b) => a + b, 0)
-  return [
-    ...guns.map((s, i) => ({ skin: s.id, weight: weights[i] })),
-    ...knives.map((s, i) => ({
-      skin: s.id,
-      weight:
-        Math.floor(100 / knives.length) + (i < 100 % knives.length ? 1 : 0),
-    })),
-  ]
+export type Skin = {
+  id: string
+  image: string
+  name: string
+  weapon: string
+  value: number
+  rarity: string
+  color: string
+  knife?: boolean
+  glove?: boolean
 }
-export const cases = [
-  {
-    id: 'starter',
-    name: 'Первый дроп',
-    subtitle: 'Большое начинается с малого',
-    price: 250,
-    color: '#93b8ff',
-    tag: 'ДЛЯ СТАРТА',
-    drops: dropsFor(0),
-  },
-  {
-    id: 'toxic',
-    name: 'Monster Mashup',
-    subtitle: 'Заряжен на редкие находки',
-    price: 750,
-    color: '#b7e77c',
-    tag: 'ПОПУЛЯРНЫЙ',
-    drops: dropsFor(1),
-  },
-  {
-    id: 'night',
-    name: 'Night Protocol',
-    subtitle: 'Тёмная сторона коллекции',
-    price: 1800,
-    color: '#b699ed',
-    tag: 'ЭПИЧЕСКИЙ',
-    drops: dropsFor(2),
-  },
-  {
-    id: 'gold',
-    name: 'Golden Hour',
-    subtitle: 'Твой шанс на легенду',
-    price: 4500,
-    color: '#e8bd75',
-    tag: 'ЛЕГЕНДАРНЫЙ',
-    drops: dropsFor(3),
-  },
+
+const rarityColor = {
+  common: '#91a8be',
+  rare: '#6caeff',
+  epic: '#ba8cf5',
+  legendary: '#f2bd69',
+}
+const rarityFor = (value: number) =>
+  value >= 7000
+    ? 'legendary'
+    : value >= 1500
+      ? 'epic'
+      : value >= 300
+        ? 'rare'
+        : 'common'
+
+const findBase = (weapon: string, name: string) => {
+  const s = baseSkins.find((b) => b.weapon === weapon && b.name === name)
+  if (!s) throw new Error(`Missing base skin ${weapon} ${name}`)
+  return s as Skin
+}
+const labels = {
+  st: 'StatTrak™',
+  souv: 'Сувенирный',
+  coll: 'Коллекционный',
+}
+/** A pricier edition of an existing skin (same render, new id and value). */
+const edition = (
+  weapon: string,
+  name: string,
+  kind: keyof typeof labels,
+  value: number,
+): Skin => {
+  const base = findBase(weapon, name)
+  const rarity = rarityFor(value)
+  return {
+    id: `${base.id}-${kind}`,
+    image: base.image,
+    name: `${base.name} (${labels[kind]})`,
+    weapon: base.weapon,
+    value,
+    rarity,
+    color: base.knife
+      ? base.color
+      : rarityColor[rarity as keyof typeof rarityColor],
+    knife: base.knife,
+  }
+}
+const glove = (
+  slug: string,
+  weapon: string,
+  name: string,
+  value: number,
+  color: string,
+): Skin => ({
+  id: `glove-${slug}`,
+  image: `/skins/glove-${slug}.svg`,
+  name,
+  weapon,
+  value,
+  rarity: 'legendary',
+  color,
+  glove: true,
+})
+
+const extraSkins: Skin[] = [
+  // AK-47
+  edition('AK-47', 'Redline', 'st', 9500),
+  edition('AK-47', 'Frontside Misty', 'st', 12000),
+  edition('AK-47', 'The Empress', 'st', 22000),
+  edition('AK-47', 'Redline', 'souv', 38000),
+  edition('AK-47', 'The Empress', 'souv', 85000),
+  edition('AK-47', 'The Empress', 'coll', 210000),
+  edition('AK-47', 'Redline', 'coll', 140000),
+  edition('AK-47', 'Frontside Misty', 'coll', 320000),
+  // AWP
+  edition('AWP', 'Neo-Noir', 'st', 5000),
+  edition('AWP', 'Atheris', 'st', 6500),
+  edition('AWP', 'Asiimov', 'st', 13000),
+  edition('AWP', 'Asiimov', 'souv', 40000),
+  edition('AWP', 'Dragon Lore', 'st', 48000),
+  edition('AWP', 'Dragon Lore', 'coll', 260000),
+  edition('AWP', 'Dragon Lore', 'souv', 900000),
+  // USP-S
+  edition('USP-S', 'Monster Mashup', 'st', 2400),
+  edition('USP-S', 'Cortex', 'st', 6500),
+  edition('USP-S', 'Monster Mashup', 'souv', 11000),
+  edition('USP-S', 'Cortex', 'souv', 32000),
+  edition('USP-S', 'Cortex', 'coll', 85000),
+  // Desert Eagle
+  edition('Desert Eagle', 'Bronze Deco', 'st', 450),
+  edition('Desert Eagle', 'Conspiracy', 'st', 3200),
+  edition('Desert Eagle', 'Conspiracy', 'souv', 14000),
+  edition('Desert Eagle', 'Conspiracy', 'coll', 55000),
+  edition('Desert Eagle', 'Bronze Deco', 'coll', 130000),
+  // M4A4
+  edition('M4A4', 'Evil Daimyo', 'st', 3500),
+  edition('M4A4', 'Neo-Noir', 'st', 9500),
+  edition('M4A4', 'Evil Daimyo', 'souv', 24000),
+  edition('M4A4', 'Neo-Noir', 'souv', 60000),
+  edition('M4A4', 'Neo-Noir', 'coll', 150000),
+  // Other expensive guns (premium cases)
+  edition('M4A1-S', 'Printstream', 'st', 30000),
+  edition('M4A1-S', 'Fade', 'st', 21000),
+  // Knives: StatTrak™ and top editions
+  edition('Bayonet', 'Fade', 'st', 38000),
+  edition('Karambit', 'Doppler', 'st', 52000),
+  edition('Butterfly Knife', 'Slaughter', 'st', 48000),
+  edition('M9 Bayonet', 'Tiger Tooth', 'st', 55000),
+  edition('Flip Knife', 'Doppler', 'st', 62000),
+  edition('Gut Knife', 'Marble Fade', 'st', 70000),
+  edition('Huntsman Knife', 'Tiger Tooth', 'st', 80000),
+  edition('Bowie Knife', 'Crimson Web', 'st', 90000),
+  edition('Falchion Knife', 'Fade', 'st', 100000),
+  edition('Karambit', 'Doppler', 'coll', 260000),
+  edition('Butterfly Knife', 'Slaughter', 'coll', 340000),
+  edition('M9 Bayonet', 'Tiger Tooth', 'coll', 420000),
+  edition('Flip Knife', 'Doppler', 'coll', 650000),
+  // Gloves (drawn placeholder art in /public/skins/glove-*.svg)
+  glove('hand-wraps-slaughter', 'Hand Wraps', 'Slaughter', 48000, '#e5cdb0'),
+  glove('moto-spearmint', 'Moto Gloves', 'Spearmint', 72000, '#6fd1a8'),
+  glove('bloodhound-charred', 'Bloodhound Gloves', 'Charred', 95000, '#d08a4c'),
+  glove('driver-king-snake', 'Driver Gloves', 'King Snake', 140000, '#d2b24a'),
+  glove('specialist-kimono', 'Specialist Gloves', 'Crimson Kimono', 210000, '#e0574a'),
+  glove('sport-hedge-maze', 'Sport Gloves', 'Hedge Maze', 320000, '#7fc46f'),
+  glove('specialist-emerald', 'Specialist Gloves', 'Emerald Web', 480000, '#3ed49a'),
+  glove('sport-pandora', 'Sport Gloves', "Pandora's Box", 750000, '#a77bf0'),
+  glove('sport-vice', 'Sport Gloves', 'Vice', 1100000, '#ff6fb5'),
+  glove('driver-crimson-weave', 'Driver Gloves', 'Crimson Weave', 1600000, '#d12d4a'),
+  glove('specialist-fade', 'Specialist Gloves', 'Fade', 2200000, '#ff9d52'),
 ]
+
+export const skins: readonly Skin[] = [...baseSkins, ...extraSkins]
+
+export const isKnife = (skin: Skin) => skin.knife === true
+export const isGlove = (skin: Skin) => skin.glove === true
+/** Knives and gloves: the "premium-only" drops. */
+export const isPremiumItem = (skin: Skin) => isKnife(skin) || isGlove(skin)
+
+export type Drop = { skin: string; weight: number }
+
+/**
+ * Drop table whose weights sum to exactly 10 000 (0.01% steps).
+ * Weight ~ value^-s; s is solved so that the expected payout is `rtp` * price
+ * (capped at 90% of the best the pool can possibly pay out).
+ */
+function buildDrops(pool: Skin[], price: number, rtp: number): Drop[] {
+  const vmin = Math.min(...pool.map((s) => s.value))
+  const scores = (s: number) => pool.map((x) => Math.pow(x.value / vmin, -s))
+  const ev = (s: number) => {
+    const sc = scores(s)
+    const sum = sc.reduce((a, b) => a + b, 0)
+    return sc.reduce((a, w, i) => a + w * pool[i].value, 0) / sum
+  }
+  const target = Math.max(vmin, Math.min(price * rtp, ev(0) * 0.9))
+  let lo = 0
+  let hi = 4
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2
+    if (ev(mid) > target) lo = mid
+    else hi = mid
+  }
+  const sc = scores((lo + hi) / 2)
+  const sum = sc.reduce((a, b) => a + b, 0)
+  const weights = sc.map((w) => Math.max(1, Math.floor((w / sum) * 10000)))
+  const top = weights.indexOf(Math.max(...weights))
+  weights[top] += 10000 - weights.reduce((a, b) => a + b, 0)
+  return pool.map((s, i) => ({ skin: s.id, weight: weights[i] }))
+}
+
+type CaseDef = {
+  id: string
+  name: string
+  subtitle: string
+  price: number
+  color: string
+  tag: string
+  group: 'basic' | 'weapon' | 'premium'
+  pool: (s: Skin) => boolean
+  rtp: number
+}
+
+export const caseGroups = [
+  { id: 'basic', label: 'Обычные кейсы', hint: '500 – 20 000 · без ножей и перчаток' },
+  { id: 'weapon', label: 'Оружейные кейсы', hint: '20 000 – 100 000 · только один тип оружия' },
+  { id: 'premium', label: 'Премиум кейсы', hint: '100 000 – 500 000 · ножи, перчатки, топ-скины' },
+] as const
+
+const basicPool = (price: number) => (s: Skin) =>
+  !isPremiumItem(s) &&
+  !s.id.endsWith('-souv') &&
+  !s.id.endsWith('-coll') &&
+  s.value >= price * 0.07 &&
+  s.value <= price * 1.6
+const weaponPool = (weapon: string) => (s: Skin) =>
+  s.weapon === weapon && !isPremiumItem(s)
+const premiumPool = (price: number) => (s: Skin) =>
+  s.value >= price * 0.12 && s.value <= price * 5
+
+const caseDefs: CaseDef[] = [
+  // --- Обычные: 500 – 20 000 ---
+  { id: 'starter', name: 'Первый дроп', subtitle: 'Большое начинается с малого', price: 500, color: '#93b8ff', tag: 'ДЛЯ СТАРТА', group: 'basic', pool: basicPool(500), rtp: 0.7 },
+  { id: 'toxic', name: 'Monster Mashup', subtitle: 'Заряжен на редкие находки', price: 900, color: '#b7e77c', tag: 'ПОПУЛЯРНЫЙ', group: 'basic', pool: basicPool(900), rtp: 0.7 },
+  { id: 'rust', name: 'Rust Belt', subtitle: 'Старый металл, новые шансы', price: 1500, color: '#d9a066', tag: 'НОВЫЙ', group: 'basic', pool: basicPool(1500), rtp: 0.7 },
+  { id: 'night', name: 'Night Protocol', subtitle: 'Тёмная сторона коллекции', price: 2500, color: '#b699ed', tag: 'ЭПИЧЕСКИЙ', group: 'basic', pool: basicPool(2500), rtp: 0.7 },
+  { id: 'frost', name: 'Frostbite', subtitle: 'Холодный расчёт', price: 4000, color: '#8fe3f2', tag: 'ХИТ', group: 'basic', pool: basicPool(4000), rtp: 0.7 },
+  { id: 'neon', name: 'Neon District', subtitle: 'Город, который не спит', price: 6000, color: '#ff79c6', tag: 'ЯРКИЙ', group: 'basic', pool: basicPool(6000), rtp: 0.7 },
+  { id: 'gold', name: 'Golden Hour', subtitle: 'Твой шанс на легенду', price: 9000, color: '#e8bd75', tag: 'ЛЕГЕНДАРНЫЙ', group: 'basic', pool: basicPool(9000), rtp: 0.7 },
+  { id: 'crimson', name: 'Crimson Tide', subtitle: 'Красная волна удачи', price: 12500, color: '#f16c72', tag: 'ГОРЯЧИЙ', group: 'basic', pool: basicPool(12500), rtp: 0.7 },
+  { id: 'storm', name: 'Storm Front', subtitle: 'Гроза несёт дорогие скины', price: 16000, color: '#7aa2ff', tag: 'МОЩНЫЙ', group: 'basic', pool: basicPool(16000), rtp: 0.7 },
+  { id: 'apex', name: 'Apex', subtitle: 'Вершина обычных кейсов', price: 20000, color: '#f2d36b', tag: 'ТОП', group: 'basic', pool: basicPool(20000), rtp: 0.7 },
+  // --- Оружейные: 20 000 – 100 000 ---
+  { id: 'usp', name: 'USP Cache', subtitle: 'Только USP-S', price: 20000, color: '#9ad0ff', tag: 'USP-S', group: 'weapon', pool: weaponPool('USP-S'), rtp: 0.75 },
+  { id: 'deagle', name: 'Deagle Vault', subtitle: 'Только Desert Eagle', price: 30000, color: '#ffd166', tag: 'DESERT EAGLE', group: 'weapon', pool: weaponPool('Desert Eagle'), rtp: 0.75 },
+  { id: 'm4a4', name: 'M4A4 Armory', subtitle: 'Только M4A4', price: 45000, color: '#7ee0b0', tag: 'M4A4', group: 'weapon', pool: weaponPool('M4A4'), rtp: 0.75 },
+  { id: 'ak47', name: 'AK-47 Arsenal', subtitle: 'Только AK-47', price: 70000, color: '#ff8a65', tag: 'AK-47', group: 'weapon', pool: weaponPool('AK-47'), rtp: 0.75 },
+  { id: 'awp', name: 'AWP Sniper Nest', subtitle: 'Только AWP', price: 100000, color: '#c792ff', tag: 'AWP', group: 'weapon', pool: weaponPool('AWP'), rtp: 0.75 },
+  // --- Премиум: 100 000 – 500 000 ---
+  { id: 'blade-1', name: 'Blade Society', subtitle: 'Первые ножи и перчатки', price: 100000, color: '#cfd8e3', tag: 'ПРЕМИУМ', group: 'premium', pool: premiumPool(100000), rtp: 0.85 },
+  { id: 'wraps', name: 'Wrapped Fortune', subtitle: 'Перчатки и острые лезвия', price: 125000, color: '#e5cdb0', tag: 'ПЕРЧАТКИ', group: 'premium', pool: premiumPool(125000), rtp: 0.86 },
+  { id: 'obsidian', name: 'Obsidian Vault', subtitle: 'Тёмное золото коллекции', price: 150000, color: '#a58cff', tag: 'ЭЛИТА', group: 'premium', pool: premiumPool(150000), rtp: 0.87 },
+  { id: 'emberfall', name: 'Emberfall', subtitle: 'Горячие ножи', price: 185000, color: '#ff7a59', tag: 'ГОРЯЧИЙ', group: 'premium', pool: premiumPool(185000), rtp: 0.88 },
+  { id: 'kimono', name: 'Crimson Kimono', subtitle: 'Редкие перчатки в шансе', price: 225000, color: '#e0574a', tag: 'РЕДКИЙ', group: 'premium', pool: premiumPool(225000), rtp: 0.89 },
+  { id: 'emerald', name: 'Emerald Crown', subtitle: 'Изумрудная коллекция', price: 270000, color: '#3ed49a', tag: 'КОРОНА', group: 'premium', pool: premiumPool(270000), rtp: 0.9 },
+  { id: 'dragon', name: 'Dragon Hoard', subtitle: 'Сокровища дракона', price: 320000, color: '#f2bd69', tag: 'ЛЕГЕНДА', group: 'premium', pool: premiumPool(320000), rtp: 0.91 },
+  { id: 'pandora', name: "Pandora's Box", subtitle: 'Открой — и узнаешь', price: 370000, color: '#c08cff', tag: 'МИФИЧЕСКИЙ', group: 'premium', pool: premiumPool(370000), rtp: 0.92 },
+  { id: 'vice', name: 'Vice Royale', subtitle: 'Королевский дроп', price: 430000, color: '#ff6fb5', tag: 'РОЯЛ', group: 'premium', pool: premiumPool(430000), rtp: 0.93 },
+  { id: 'sovereign', name: 'Sovereign', subtitle: 'Самый дорогой кейс', price: 500000, color: '#ffd76a', tag: 'ВЕРШИНА', group: 'premium', pool: premiumPool(500000), rtp: 0.94 },
+]
+
+export const cases = caseDefs.map(({ pool, rtp, ...c }) => ({
+  ...c,
+  drops: buildDrops(skins.filter(pool), c.price, rtp),
+}))
+
+/** Total chance (in percent) of a knife or glove from this case. */
+export const premiumChance = (drops: Drop[]) =>
+  drops
+    .filter((d) => isPremiumItem(skinById(d.skin)))
+    .reduce((a, d) => a + d.weight, 0) / 100
 export type Item = { uid: string; skin: string }
 export type Player = {
   balance: number

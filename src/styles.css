@@ -591,6 +591,28 @@ h1 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 15px;
 }
+.cases-group-title {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #2a2e36;
+}
+.cases-group-title:first-child {
+  margin-top: 0;
+}
+.cases-group-title strong {
+  font-size: 15px;
+  letter-spacing: -0.3px;
+}
+.cases-group-title span {
+  font-size: 11px;
+  color: #757c87;
+}
 .case-card {
   background: linear-gradient(155deg, #23262d, #191c21);
   border: 1px solid #30343c;
@@ -1112,6 +1134,9 @@ footer button {
   margin: 14px 0 22px;
   display: grid;
   gap: 10px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 .drop-list > div {
   display: flex;

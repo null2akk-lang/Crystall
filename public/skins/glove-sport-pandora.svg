@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 384" role="img" aria-label="glove-sport-pandora">
+<defs>
+<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a4bd6"/><stop offset="1" stop-color="#2b1458"/></linearGradient>
+<linearGradient id="fd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a4bd6"/><stop offset=".5" stop-color="#f0d34a"/><stop offset="1" stop-color="#2b1458"/></linearGradient>
+<clipPath id="shape"><use href="#glove"/></clipPath>
+<g id="glove">
+<rect x="150" y="215" width="200" height="120" rx="26"/>
+<rect x="150" y="100" width="42" height="150" rx="21" transform="rotate(-6 171 175)"/>
+<rect x="198" y="75" width="44" height="175" rx="22" transform="rotate(-2 220 160)"/>
+<rect x="248" y="72" width="44" height="178" rx="22" transform="rotate(2 270 160)"/>
+<rect x="298" y="90" width="42" height="160" rx="21" transform="rotate(7 319 170)"/>
+<rect x="85" y="205" width="48" height="125" rx="24" transform="rotate(-48 109 267)"/>
+<rect x="140" y="215" width="220" height="130" rx="24"/>
+</g>
+</defs>
+<g transform="rotate(-18 256 192) translate(16 -6)">
+<g fill="#00000040" transform="translate(10 16)"><use href="#glove"/></g>
+<g fill="url(#g)"><use href="#glove"/></g>
+<g clip-path="url(#shape)"><path d="M190 140 l6 14 l15 2 l-11 10 l3 15 l-13 -8 l-13 8 l3 -15 l-11 -10 l15 -2z" fill="#f0d34a" opacity=".85"/><path d="M270 170 l6 14 l15 2 l-11 10 l3 15 l-13 -8 l-13 8 l3 -15 l-11 -10 l15 -2z" fill="#f0d34a" opacity=".85"/><path d="M210 230 l6 14 l15 2 l-11 10 l3 15 l-13 -8 l-13 8 l3 -15 l-11 -10 l15 -2z" fill="#f0d34a" opacity=".85"/><path d="M300 250 l6 14 l15 2 l-11 10 l3 15 l-13 -8 l-13 8 l3 -15 l-11 -10 l15 -2z" fill="#f0d34a" opacity=".85"/></g>
+<g fill="none" stroke="#00000055" stroke-width="3"><use href="#glove"/></g>
+<rect x="138" y="318" width="224" height="46" rx="14" fill="#2b1458" stroke="#00000055" stroke-width="3"/>
+<rect x="138" y="318" width="224" height="12" rx="6" fill="#ffffff22"/>
+</g>
+</svg>
