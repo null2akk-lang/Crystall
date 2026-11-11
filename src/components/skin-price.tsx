@@ -6,7 +6,7 @@ export function SkinPrice({ item }: { item: Skin }) {
   return (
     <span
       className="skin-price"
-      title="Примерная цена обычной версии в долларах США"
+      title="Примерная цена в долларах США (ориентир — Steam)"
     >
       {price.toLocaleString('ru-RU', {
         minimumFractionDigits: 2,

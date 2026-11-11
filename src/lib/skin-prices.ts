@@ -1,7 +1,8 @@
 import type { Skin } from './game'
 
-// Manually chosen approximate USD prices for ordinary versions, across wears.
-// These are display estimates, not live Steam quotes or crystal conversions.
+// Approximate Steam Community Market prices in USD for ordinary versions, across
+// wears. These are manually maintained estimates, not live Steam quotes.
+// Crystal values of every skin are derived from them (see `crystalValueFor`).
 const estimates: Record<string, Record<string, number>> = {
   'AK-47': {
     Slate: 4,
@@ -321,15 +322,43 @@ const estimates: Record<string, Record<string, number>> = {
   },
 }
 
+/**
+ * Economy peg: 1 USD = 7 500 crystals. Taken from the Telegram Stars base rate
+ * (50 stars = 8 300 crystals ~ 1.10 USD, i.e. ~7 545 crystals per USD), rounded
+ * down so a skin is never cheaper than its Steam price.
+ */
+export const CRYSTALS_PER_USD = 7500
+
+/** Price of a special edition relative to the ordinary version. */
+export const EDITION_PRICE_MULTIPLIER = {
+  'StatTrak™': 1.6,
+  Сувенирный: 4,
+  Коллекционный: 3,
+} as const
+
+const editionPattern = /^(.*) \((StatTrak™|Сувенирный|Коллекционный)\)$/
+
+/** Approximate Steam price in USD, including the StatTrak/Сувенирный/Коллекционный multiplier. */
 export function approximatePriceUsd(
   item: Pick<Skin, 'weapon' | 'name'>,
 ): number {
-  const finish = item.name.replace(
-    / \((StatTrak™|Сувенирный|Коллекционный)\)$/,
-    '',
-  )
+  const match = editionPattern.exec(item.name)
+  const finish = match ? match[1] : item.name
   const price = estimates[item.weapon]?.[finish]
   if (price === undefined)
     throw new Error(`Missing price estimate: ${item.weapon} | ${finish}`)
-  return price
+  if (!match) return price
+  const multiplier =
+    EDITION_PRICE_MULTIPLIER[match[2] as keyof typeof EDITION_PRICE_MULTIPLIER]
+  return Math.round(price * multiplier * 100) / 100
 }
+
+/** Rounds crystal amounts to 2-3 significant digits so prices look tidy. */
+const roundCrystals = (v: number) => {
+  const step = v < 1000 ? 5 : v < 10000 ? 50 : v < 100000 ? 500 : v < 1000000 ? 5000 : 50000
+  return Math.max(step, Math.round(v / step) * step)
+}
+
+/** Crystal value of an item: its USD price at the fixed peg. */
+export const crystalValueFor = (item: Pick<Skin, 'weapon' | 'name'>) =>
+  roundCrystals(approximatePriceUsd(item) * CRYSTALS_PER_USD)

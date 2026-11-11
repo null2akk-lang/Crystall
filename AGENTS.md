@@ -15,7 +15,7 @@ Russian Telegram Mini App for virtual CS2 case openings, upgrades and inventory.
 
 ## Conventions and decisions
 
-Use TypeScript, existing two-space formatting and Russian interface copy. Never rename legacy skin IDs or change their crystal values as a side effect of image work: inventories store those IDs. Catalog merge matches exact weapon and finish names, updates existing renders and appends only missing finishes. New values are virtual game values, not market data. Knife/glove/charm flags distinguish item categories. Case pools automatically consume the merged catalog, so catalog changes can change individual drop probabilities.
+Use TypeScript, existing two-space formatting and Russian interface copy. Never rename legacy skin IDs: inventories store those IDs. Crystal values are no longer hand-set per skin; they are computed from the USD price (see "Skin pricing"). Catalog merge matches exact weapon and finish names, updates existing renders and appends only missing finishes. New values are virtual game values, not market data. Knife/glove/charm flags distinguish item categories. Case pools automatically consume the merged catalog, so catalog changes can change individual drop probabilities.
 
 Missing Link, Pinch O' Luck and CZ75-Auto | Xiphos were excluded as unconfirmed names. Both Sunset Storm variants are present. Chicken Lil' and 龍王 (Dragon King) use official names. Doppler uses one representative render per finish, not a phase inventory.
 
@@ -23,9 +23,11 @@ The user explicitly requested preserving the Cloudflare architecture. No storage
 
 The Netlify build command installs locked dependencies with `npm ci --include=dev` before running Vite, so direct CLI deployments also have build tools available. Keep `package-lock.json` synchronized with `package.json`. The Netlify pipeline handles build validation. `netlify.toml` publishes Vite output from `dist`. Never commit build output, environment files or credentials.
 
-## Price floors (expensive skins)
+## Skin pricing (Steam peg)
 
-`src/lib/game.ts` raises the crystal value of expensive items from their approximate USD price (`skin-prices.ts`): $100-299 -> 45k-85k, $300-999 -> 85k-180k, $1000+ -> 180k and up. Values are only raised, never lowered. StatTrak/Сувенирный/Коллекционный editions follow their base (x1.6 / x4 / x3). Premium case pools use items worth 0.3x-5x the case price.
+Every skin's crystal value is `approximatePriceUsd(skin) * CRYSTALS_PER_USD`, rounded (`crystalValueFor` in `src/lib/skin-prices.ts`, applied in `src/lib/game.ts`). The peg is `CRYSTALS_PER_USD = 7500`, derived from the Stars base rate (50 stars = 8 300 crystals ~ 1.10 USD). Prices go both up and down; the `value` fields in `baseSkins`/`extraSkins`/`skin-catalog.ts` are ignored at runtime. To change a price, edit the USD estimate in `skin-prices.ts` (approximate Steam market price, not live data). StatTrak/Сувенирный/Коллекционный editions use x1.6 / x4 / x3 of the base USD price, and the USD shown in the UI includes that multiplier.
+
+Case rules (`buildDrops` and `paybackChance` in `src/lib/game.ts`): the chance of getting at least the case price is capped per group: basic 45%, weapon 35%, premium 35% (100k case) falling to 25% (500k case). The expected payout is capped at 90% of the price (`rtp`). Pools drop items that are too expensive: basic cases up to 2x the price, weapon cases up to 4x, premium cases from 0.15x to 5x. A case pool must contain items cheaper than `price * rtp`, otherwise real RTP exceeds 100%. Case prices are placed just under existing skin value levels (e.g. 3 500, 7 500, 15 000) so each pool has items at or above the price; the weapon cases cost 45k-300k. Check payback chance and real RTP after any price or catalog change. Premium cases give knives/gloves only rarely, because the cheapest knife or glove is about 65 USD (~490k crystals). Free crystals (1 000 welcome, 5 000 referral, 10 000 promo) were not changed.
 
 ## Telegram Stars donations
 

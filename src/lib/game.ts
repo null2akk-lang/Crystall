@@ -1,5 +1,5 @@
 import { skinCatalog } from './skin-catalog'
-import { approximatePriceUsd } from './skin-prices'
+import { crystalValueFor } from './skin-prices'
 
 const baseSkins = [
   {
@@ -660,44 +660,15 @@ const mergedSkins: Skin[] = [
 ]
 
 /**
- * Price floor in crystals for expensive items, from the approximate USD price.
- * Values are only ever raised, never lowered, so inventories keep their worth.
- * $100-299 -> 45k-85k, $300-999 -> 85k-180k, $1000+ -> 180k and up.
+ * Every item is worth its approximate Steam price at the fixed peg
+ * 1 USD = 7 500 crystals (see `skin-prices.ts`). StatTrak/Сувенирный/Коллекционный
+ * editions follow the base price via their multiplier. The old per-item values
+ * above are only kept as the source of ids, names and images.
  */
-const valueFloor = (usd: number) =>
-  usd >= 1000
-    ? 180000 + (usd - 1000) * 40
-    : usd >= 300
-      ? 85000 + (usd - 300) * (95000 / 700)
-      : usd >= 100
-        ? 45000 + (usd - 100) * 200
-        : 0
-const roundValue = (v: number) =>
-  v >= 100000 ? Math.round(v / 5000) * 5000 : Math.round(v / 500) * 500
-const editionMultiplier = { st: 1.6, souv: 4, coll: 3 } as const
-const editionSuffix = /-(st|souv|coll)$/
-
-const raisedById = new Map<string, number>()
-for (const skin of mergedSkins) {
-  if (editionSuffix.test(skin.id)) continue
-  const floor = roundValue(valueFloor(approximatePriceUsd(skin)))
-  if (floor > skin.value) raisedById.set(skin.id, floor)
-}
-
-export const skins: readonly Skin[] = mergedSkins.map((skin) => {
-  const match = editionSuffix.exec(skin.id)
-  if (match) {
-    const baseValue = raisedById.get(skin.id.replace(editionSuffix, ''))
-    if (baseValue === undefined) return skin
-    const kind = match[1] as keyof typeof editionMultiplier
-    return {
-      ...skin,
-      value: Math.max(skin.value, roundValue(baseValue * editionMultiplier[kind])),
-    }
-  }
-  const raised = raisedById.get(skin.id)
-  return raised === undefined ? skin : { ...skin, value: raised }
-})
+export const skins: readonly Skin[] = mergedSkins.map((skin) => ({
+  ...skin,
+  value: crystalValueFor(skin),
+}))
 
 export const isKnife = (skin: Skin) => skin.knife === true
 export const isGlove = (skin: Skin) => skin.glove === true
@@ -708,27 +679,50 @@ export const isPremiumItem = (skin: Skin) => isKnife(skin) || isGlove(skin)
 export type Drop = { skin: string; weight: number }
 
 /**
- * Drop table whose weights sum to exactly 10 000 (0.01% steps).
- * Weight ~ value^-s; s is solved so that the expected payout is `rtp` * price
- * (capped at 90% of the best the pool can possibly pay out).
+ * Maximum chance (0.45 = 45%) of getting at least the case price, by case group.
+ * Premium cases go from 35% (cheapest) down to 25% (most expensive).
  */
-function buildDrops(pool: Skin[], price: number, rtp: number): Drop[] {
+const paybackChance = (group: string, price: number) =>
+  group === 'basic' ? 0.45 : group === 'weapon' ? 0.35 : 0.35 - ((price - 100000) / 400000) * 0.1
+
+/**
+ * Drop table whose weights sum to exactly 10 000 (0.01% steps).
+ * Weight ~ value^-s. s is the smallest exponent that satisfies both limits:
+ * the chance of getting at least the case price is <= `maxHit`, and the
+ * expected payout is <= `rtp` * price.
+ */
+function buildDrops(
+  pool: Skin[],
+  price: number,
+  rtp: number,
+  maxHit: number,
+): Drop[] {
   const vmin = Math.min(...pool.map((s) => s.value))
   const scores = (s: number) => pool.map((x) => Math.pow(x.value / vmin, -s))
-  const ev = (s: number) => {
+  const stats = (s: number) => {
     const sc = scores(s)
     const sum = sc.reduce((a, b) => a + b, 0)
-    return sc.reduce((a, w, i) => a + w * pool[i].value, 0) / sum
+    let ev = 0
+    let hit = 0
+    sc.forEach((w, i) => {
+      ev += (w / sum) * pool[i].value
+      if (pool[i].value >= price) hit += w / sum
+    })
+    return { ev, hit }
   }
-  const target = Math.max(vmin, Math.min(price * rtp, ev(0) * 0.9))
-  let lo = 0
-  let hi = 4
+  const target = Math.max(vmin, price * rtp)
+  const ok = (s: number) => {
+    const { ev, hit } = stats(s)
+    return ev <= target && hit <= maxHit
+  }
+  let lo = -8
+  let hi = 8
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2
-    if (ev(mid) > target) lo = mid
-    else hi = mid
+    if (ok(mid)) hi = mid
+    else lo = mid
   }
-  const sc = scores((lo + hi) / 2)
+  const sc = scores(hi)
   const sum = sc.reduce((a, b) => a + b, 0)
   const weights = sc.map((w) => Math.max(1, Math.floor((w / sum) * 10000)))
   const top = weights.indexOf(Math.max(...weights))
@@ -750,7 +744,7 @@ type CaseDef = {
 
 export const caseGroups = [
   { id: 'basic', label: 'Обычные кейсы', hint: '500 – 20 000 · без ножей и перчаток' },
-  { id: 'weapon', label: 'Оружейные кейсы', hint: '20 000 – 100 000 · только один тип оружия' },
+  { id: 'weapon', label: 'Оружейные кейсы', hint: '45 000 – 300 000 · только один тип оружия' },
   { id: 'premium', label: 'Премиум кейсы', hint: '100 000 – 500 000 · ножи, перчатки, топ-скины' },
 ] as const
 
@@ -759,46 +753,51 @@ const basicPool = (price: number) => (s: Skin) =>
   !s.id.endsWith('-souv') &&
   !s.id.endsWith('-coll') &&
   s.value >= price * 0.07 &&
-  s.value <= price * 1.6
-const weaponPool = (weapon: string) => (s: Skin) =>
-  s.weapon === weapon && !isPremiumItem(s)
+  s.value <= price * 2
+const weaponPool = (weapon: string, price: number) => (s: Skin) =>
+  s.weapon === weapon && !isPremiumItem(s) && s.value <= price * 4
 const premiumPool = (price: number) => (s: Skin) =>
-  s.value >= price * 0.3 && s.value <= price * 5
+  s.value >= price * 0.15 && s.value <= price * 5
 
 const caseDefs: CaseDef[] = [
   // --- Обычные: 500 – 20 000 ---
-  { id: 'starter', name: 'Первый дроп', subtitle: 'Большое начинается с малого', price: 500, color: '#93b8ff', tag: 'ДЛЯ СТАРТА', group: 'basic', pool: basicPool(500), rtp: 0.7 },
-  { id: 'toxic', name: 'Monster Mashup', subtitle: 'Заряжен на редкие находки', price: 900, color: '#b7e77c', tag: 'ПОПУЛЯРНЫЙ', group: 'basic', pool: basicPool(900), rtp: 0.7 },
-  { id: 'rust', name: 'Rust Belt', subtitle: 'Старый металл, новые шансы', price: 1500, color: '#d9a066', tag: 'НОВЫЙ', group: 'basic', pool: basicPool(1500), rtp: 0.7 },
-  { id: 'night', name: 'Night Protocol', subtitle: 'Тёмная сторона коллекции', price: 2500, color: '#b699ed', tag: 'ЭПИЧЕСКИЙ', group: 'basic', pool: basicPool(2500), rtp: 0.7 },
-  { id: 'frost', name: 'Frostbite', subtitle: 'Холодный расчёт', price: 4000, color: '#8fe3f2', tag: 'ХИТ', group: 'basic', pool: basicPool(4000), rtp: 0.7 },
-  { id: 'neon', name: 'Neon District', subtitle: 'Город, который не спит', price: 6000, color: '#ff79c6', tag: 'ЯРКИЙ', group: 'basic', pool: basicPool(6000), rtp: 0.7 },
-  { id: 'gold', name: 'Golden Hour', subtitle: 'Твой шанс на легенду', price: 9000, color: '#e8bd75', tag: 'ЛЕГЕНДАРНЫЙ', group: 'basic', pool: basicPool(9000), rtp: 0.7 },
-  { id: 'crimson', name: 'Crimson Tide', subtitle: 'Красная волна удачи', price: 12500, color: '#f16c72', tag: 'ГОРЯЧИЙ', group: 'basic', pool: basicPool(12500), rtp: 0.7 },
-  { id: 'storm', name: 'Storm Front', subtitle: 'Гроза несёт дорогие скины', price: 16000, color: '#7aa2ff', tag: 'МОЩНЫЙ', group: 'basic', pool: basicPool(16000), rtp: 0.7 },
-  { id: 'apex', name: 'Apex', subtitle: 'Вершина обычных кейсов', price: 20000, color: '#f2d36b', tag: 'ТОП', group: 'basic', pool: basicPool(20000), rtp: 0.7 },
-  // --- Оружейные: 20 000 – 100 000 ---
-  { id: 'usp', name: 'USP Cache', subtitle: 'Только USP-S', price: 20000, color: '#9ad0ff', tag: 'USP-S', group: 'weapon', pool: weaponPool('USP-S'), rtp: 0.75 },
-  { id: 'deagle', name: 'Deagle Vault', subtitle: 'Только Desert Eagle', price: 30000, color: '#ffd166', tag: 'DESERT EAGLE', group: 'weapon', pool: weaponPool('Desert Eagle'), rtp: 0.75 },
-  { id: 'm4a4', name: 'M4A4 Armory', subtitle: 'Только M4A4', price: 45000, color: '#7ee0b0', tag: 'M4A4', group: 'weapon', pool: weaponPool('M4A4'), rtp: 0.75 },
-  { id: 'ak47', name: 'AK-47 Arsenal', subtitle: 'Только AK-47', price: 70000, color: '#ff8a65', tag: 'AK-47', group: 'weapon', pool: weaponPool('AK-47'), rtp: 0.75 },
-  { id: 'awp', name: 'AWP Sniper Nest', subtitle: 'Только AWP', price: 100000, color: '#c792ff', tag: 'AWP', group: 'weapon', pool: weaponPool('AWP'), rtp: 0.75 },
+  { id: 'starter', name: 'Первый дроп', subtitle: 'Большое начинается с малого', price: 500, color: '#93b8ff', tag: 'ДЛЯ СТАРТА', group: 'basic', pool: basicPool(500), rtp: 0.9 },
+  { id: 'toxic', name: 'Monster Mashup', subtitle: 'Заряжен на редкие находки', price: 900, color: '#b7e77c', tag: 'ПОПУЛЯРНЫЙ', group: 'basic', pool: basicPool(900), rtp: 0.9 },
+  { id: 'rust', name: 'Rust Belt', subtitle: 'Старый металл, новые шансы', price: 1500, color: '#d9a066', tag: 'НОВЫЙ', group: 'basic', pool: basicPool(1500), rtp: 0.9 },
+  { id: 'night', name: 'Night Protocol', subtitle: 'Тёмная сторона коллекции', price: 2500, color: '#b699ed', tag: 'ЭПИЧЕСКИЙ', group: 'basic', pool: basicPool(2500), rtp: 0.9 },
+  { id: 'frost', name: 'Frostbite', subtitle: 'Холодный расчёт', price: 3500, color: '#8fe3f2', tag: 'ХИТ', group: 'basic', pool: basicPool(3500), rtp: 0.9 },
+  { id: 'neon', name: 'Neon District', subtitle: 'Город, который не спит', price: 6000, color: '#ff79c6', tag: 'ЯРКИЙ', group: 'basic', pool: basicPool(6000), rtp: 0.9 },
+  { id: 'gold', name: 'Golden Hour', subtitle: 'Твой шанс на легенду', price: 7500, color: '#e8bd75', tag: 'ЛЕГЕНДАРНЫЙ', group: 'basic', pool: basicPool(7500), rtp: 0.9 },
+  { id: 'crimson', name: 'Crimson Tide', subtitle: 'Красная волна удачи', price: 12500, color: '#f16c72', tag: 'ГОРЯЧИЙ', group: 'basic', pool: basicPool(12500), rtp: 0.9 },
+  { id: 'storm', name: 'Storm Front', subtitle: 'Гроза несёт дорогие скины', price: 15000, color: '#7aa2ff', tag: 'МОЩНЫЙ', group: 'basic', pool: basicPool(15000), rtp: 0.9 },
+  { id: 'apex', name: 'Apex', subtitle: 'Вершина обычных кейсов', price: 20000, color: '#f2d36b', tag: 'ТОП', group: 'basic', pool: basicPool(20000), rtp: 0.9 },
+  // --- Оружейные: 45 000 – 300 000 ---
+  { id: 'usp', name: 'USP Cache', subtitle: 'Только USP-S', price: 45000, color: '#9ad0ff', tag: 'USP-S', group: 'weapon', pool: weaponPool('USP-S', 45000), rtp: 0.9 },
+  { id: 'deagle', name: 'Deagle Vault', subtitle: 'Только Desert Eagle', price: 70000, color: '#ffd166', tag: 'DESERT EAGLE', group: 'weapon', pool: weaponPool('Desert Eagle', 70000), rtp: 0.9 },
+  { id: 'm4a4', name: 'M4A4 Armory', subtitle: 'Только M4A4', price: 100000, color: '#7ee0b0', tag: 'M4A4', group: 'weapon', pool: weaponPool('M4A4', 100000), rtp: 0.9 },
+  { id: 'ak47', name: 'AK-47 Arsenal', subtitle: 'Только AK-47', price: 210000, color: '#ff8a65', tag: 'AK-47', group: 'weapon', pool: weaponPool('AK-47', 210000), rtp: 0.9 },
+  { id: 'awp', name: 'AWP Sniper Nest', subtitle: 'Только AWP', price: 300000, color: '#c792ff', tag: 'AWP', group: 'weapon', pool: weaponPool('AWP', 300000), rtp: 0.9 },
   // --- Премиум: 100 000 – 500 000 ---
-  { id: 'blade-1', name: 'Blade Society', subtitle: 'Первые ножи и перчатки', price: 100000, color: '#cfd8e3', tag: 'ПРЕМИУМ', group: 'premium', pool: premiumPool(100000), rtp: 0.85 },
-  { id: 'wraps', name: 'Wrapped Fortune', subtitle: 'Перчатки и острые лезвия', price: 125000, color: '#e5cdb0', tag: 'ПЕРЧАТКИ', group: 'premium', pool: premiumPool(125000), rtp: 0.86 },
-  { id: 'obsidian', name: 'Obsidian Vault', subtitle: 'Тёмное золото коллекции', price: 150000, color: '#a58cff', tag: 'ЭЛИТА', group: 'premium', pool: premiumPool(150000), rtp: 0.87 },
-  { id: 'emberfall', name: 'Emberfall', subtitle: 'Горячие ножи', price: 185000, color: '#ff7a59', tag: 'ГОРЯЧИЙ', group: 'premium', pool: premiumPool(185000), rtp: 0.88 },
-  { id: 'kimono', name: 'Crimson Kimono', subtitle: 'Редкие перчатки в шансе', price: 225000, color: '#e0574a', tag: 'РЕДКИЙ', group: 'premium', pool: premiumPool(225000), rtp: 0.89 },
+  { id: 'blade-1', name: 'Blade Society', subtitle: 'Первые ножи и перчатки', price: 100000, color: '#cfd8e3', tag: 'ПРЕМИУМ', group: 'premium', pool: premiumPool(100000), rtp: 0.9 },
+  { id: 'wraps', name: 'Wrapped Fortune', subtitle: 'Перчатки и острые лезвия', price: 125000, color: '#e5cdb0', tag: 'ПЕРЧАТКИ', group: 'premium', pool: premiumPool(125000), rtp: 0.9 },
+  { id: 'obsidian', name: 'Obsidian Vault', subtitle: 'Тёмное золото коллекции', price: 150000, color: '#a58cff', tag: 'ЭЛИТА', group: 'premium', pool: premiumPool(150000), rtp: 0.9 },
+  { id: 'emberfall', name: 'Emberfall', subtitle: 'Горячие ножи', price: 185000, color: '#ff7a59', tag: 'ГОРЯЧИЙ', group: 'premium', pool: premiumPool(185000), rtp: 0.9 },
+  { id: 'kimono', name: 'Crimson Kimono', subtitle: 'Редкие перчатки в шансе', price: 225000, color: '#e0574a', tag: 'РЕДКИЙ', group: 'premium', pool: premiumPool(225000), rtp: 0.9 },
   { id: 'emerald', name: 'Emerald Crown', subtitle: 'Изумрудная коллекция', price: 270000, color: '#3ed49a', tag: 'КОРОНА', group: 'premium', pool: premiumPool(270000), rtp: 0.9 },
-  { id: 'dragon', name: 'Dragon Hoard', subtitle: 'Сокровища дракона', price: 320000, color: '#f2bd69', tag: 'ЛЕГЕНДА', group: 'premium', pool: premiumPool(320000), rtp: 0.91 },
-  { id: 'pandora', name: "Pandora's Box", subtitle: 'Открой — и узнаешь', price: 370000, color: '#c08cff', tag: 'МИФИЧЕСКИЙ', group: 'premium', pool: premiumPool(370000), rtp: 0.92 },
-  { id: 'vice', name: 'Vice Royale', subtitle: 'Королевский дроп', price: 430000, color: '#ff6fb5', tag: 'РОЯЛ', group: 'premium', pool: premiumPool(430000), rtp: 0.93 },
-  { id: 'sovereign', name: 'Sovereign', subtitle: 'Самый дорогой кейс', price: 500000, color: '#ffd76a', tag: 'ВЕРШИНА', group: 'premium', pool: premiumPool(500000), rtp: 0.94 },
+  { id: 'dragon', name: 'Dragon Hoard', subtitle: 'Сокровища дракона', price: 320000, color: '#f2bd69', tag: 'ЛЕГЕНДА', group: 'premium', pool: premiumPool(320000), rtp: 0.9 },
+  { id: 'pandora', name: "Pandora's Box", subtitle: 'Открой — и узнаешь', price: 370000, color: '#c08cff', tag: 'МИФИЧЕСКИЙ', group: 'premium', pool: premiumPool(370000), rtp: 0.9 },
+  { id: 'vice', name: 'Vice Royale', subtitle: 'Королевский дроп', price: 430000, color: '#ff6fb5', tag: 'РОЯЛ', group: 'premium', pool: premiumPool(430000), rtp: 0.9 },
+  { id: 'sovereign', name: 'Sovereign', subtitle: 'Самый дорогой кейс', price: 500000, color: '#ffd76a', tag: 'ВЕРШИНА', group: 'premium', pool: premiumPool(500000), rtp: 0.9 },
 ]
 
 export const cases = caseDefs.map(({ pool, rtp, ...c }) => ({
   ...c,
-  drops: buildDrops(skins.filter(pool), c.price, rtp),
+  drops: buildDrops(
+    skins.filter(pool),
+    c.price,
+    rtp,
+    paybackChance(c.group, c.price),
+  ),
 }))
 
 /** Total chance (in percent) of a knife or glove from this case. */
