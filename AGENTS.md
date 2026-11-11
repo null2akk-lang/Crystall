@@ -26,3 +26,12 @@ The Netlify build command installs locked dependencies with `npm ci --include=de
 ## Price floors (expensive skins)
 
 `src/lib/game.ts` raises the crystal value of expensive items from their approximate USD price (`skin-prices.ts`): $100-299 -> 45k-85k, $300-999 -> 85k-180k, $1000+ -> 180k and up. Values are only raised, never lowered. StatTrak/Сувенирный/Коллекционный editions follow their base (x1.6 / x4 / x3). Premium case pools use items worth 0.3x-5x the case price.
+
+## Telegram Stars donations
+
+- Packs live in `src/lib/stars.ts` (base rate 150 stars = 25 000 crystals, bigger packs add a bonus). The client only sends a pack id; the Worker owns prices.
+- `POST /api/stars` (`worker/stars.ts`) creates a `createInvoiceLink` (currency `XTR`) for the signature-verified Telegram player; payload is `<packId>:<playerId>`.
+- `POST /api/telegram-webhook` is the bot webhook: answers `pre_checkout_query` and credits crystals on `successful_payment`. `star_payments.charge_id` is the primary key, so a repeated delivery never credits twice. Crystals are never credited from the client's `openInvoice` callback.
+- Needs Cloudflare secrets `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET`, and the bot webhook pointed at `/api/telegram-webhook` with the same secret and `allowed_updates` = `["pre_checkout_query","message"]`.
+- Refunds (`refundStarPayment`) are manual; use the `charge_id` stored in `star_payments`.
+- Tests: `tests/stars.test.ts` (mocks the Telegram Bot API).

@@ -49,6 +49,15 @@ const SCHEMA = [
     code TEXT NOT NULL,
     created_at INTEGER NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS star_payments (
+    charge_id TEXT PRIMARY KEY,
+    player TEXT NOT NULL REFERENCES players(id),
+    tg_id INTEGER NOT NULL,
+    pack TEXT NOT NULL,
+    stars INTEGER NOT NULL,
+    crystals INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS admin_actions (
     id TEXT PRIMARY KEY,
     operator TEXT NOT NULL REFERENCES players(id),

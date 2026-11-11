@@ -1,5 +1,6 @@
 import { handleAdmin } from './admin'
 import { handleGame } from './game'
+import { handleStars, handleTelegramWebhook } from './stars'
 import { json } from './util'
 import type { Env } from './types'
 
@@ -8,6 +9,8 @@ export default {
     const { pathname } = new URL(request.url)
     if (pathname === '/api/game') return handleGame(request, env)
     if (pathname === '/api/admin') return handleAdmin(request, env)
+    if (pathname === '/api/stars') return handleStars(request, env)
+    if (pathname === '/api/telegram-webhook') return handleTelegramWebhook(request, env)
     if (pathname.startsWith('/api/')) return json({ error: 'Не найдено' }, 404)
     // Everything else is the built web app (normally served before reaching this code).
     return env.ASSETS.fetch(request)

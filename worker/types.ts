@@ -24,4 +24,6 @@ export interface Env {
   CRYSTAL_ADMIN_CODE?: string
   /** Optional: Telegram bot token. With it, player names/photos are verified by signature. */
   TELEGRAM_BOT_TOKEN?: string
+  /** Secret sent by Telegram with every bot webhook call (needed for Stars payments). */
+  TELEGRAM_WEBHOOK_SECRET?: string
 }

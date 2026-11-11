@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   RefreshCw,
   Ban,
+  Star,
 } from 'lucide-react'
 import {
   cases,
@@ -31,6 +32,7 @@ import {
   type Tier,
 } from './lib/game'
 import { AdminPanel, type JournalRow } from './components/admin-panel'
+import { STAR_PACKS, packBonus } from './lib/stars'
 import { SkinPrice } from './components/skin-price'
 import { caseCovers, sortedCases } from './lib/case-covers'
 
@@ -128,7 +130,7 @@ export function Home() {
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [boxId, setBoxId] = useState<string | null>(null)
-  const [modal, setModal] = useState<'invite' | 'help' | 'promo' | null>(null)
+  const [modal, setModal] = useState<'invite' | 'help' | 'promo' | 'stars' | null>(null)
   const [admin, setAdmin] = useState(false)
   const [code, setCode] = useState('')
   const [adminBusy, setAdminBusy] = useState(false)
@@ -385,6 +387,74 @@ export function Home() {
   function referralLink() {
     return `${window.location.origin}/?ref=${player?.id}`
   }
+  async function buyStars(packId: string) {
+    setError('')
+    setBusy(true)
+    try {
+      const app = (
+        window as Window & {
+          Telegram?: {
+            WebApp?: {
+              initData?: string
+              openInvoice?: (
+                url: string,
+                callback?: (status: string) => void,
+              ) => void
+            }
+          }
+        }
+      ).Telegram?.WebApp
+      if (!app?.openInvoice)
+        throw new Error('Откройте игру внутри Telegram, чтобы пополнить баланс')
+      const res = await fetch('/api/stars', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'invoice',
+          packId,
+          initData: app.initData || undefined,
+        }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Не удалось создать счёт')
+      const before = player?.balance ?? 0
+      app.openInvoice(result.link, (status) => {
+        if (status === 'paid') {
+          setModal(null)
+          setNotice('Оплата прошла! Кристаллы появятся на балансе через пару секунд.')
+          void waitForCredit(before, app.initData)
+        } else if (status === 'failed') {
+          setError('Оплата не прошла. Попробуйте ещё раз.')
+        }
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка соединения.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Telegram confirms the payment to the server a moment after the invoice closes.
+  async function waitForCredit(before: number, initData?: string) {
+    for (let i = 0; i < 8; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      try {
+        const res = await fetch('/api/game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'state', initData: initData || undefined }),
+        })
+        const result = await res.json()
+        if (result.player) {
+          setPlayer(result.player)
+          if (result.player.balance > before) return
+        }
+      } catch {
+        // Try again on the next round.
+      }
+    }
+  }
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(referralLink())
@@ -511,6 +581,16 @@ export function Home() {
               <Gem size={18} />
               <strong>{loading ? '…' : format(player?.balance ?? 0)}</strong>
               <span>кристаллов</span>
+              <button
+                className="topup-button"
+                onClick={() => {
+                  setError('')
+                  setModal('stars')
+                }}
+                aria-label="Пополнить баланс звёздами Telegram"
+              >
+                <Star size={15} />+
+              </button>
             </div>
             <div className="avatar" title="Гостевой профиль">
               P<span />
@@ -1017,7 +1097,9 @@ export function Home() {
                 ? 'Пригласить друзей'
                 : modal === 'promo'
                   ? 'Промокоды и управление'
-                  : 'Правила игры')
+                  : modal === 'stars'
+                    ? 'Пополнение баланса'
+                    : 'Правила игры')
             }
           >
             <button
@@ -1230,6 +1312,41 @@ export function Home() {
                   Бонус — за новый гостевой профиль. Профиль сохраняется в этом
                   браузере; не очищайте его данные.
                 </p>
+              </>
+            )}
+            {modal === 'stars' && (
+              <>
+                <span className="eyebrow">ПОПОЛНЕНИЕ</span>
+                <h2>Купить кристаллы</h2>
+                <p className="muted">
+                  Оплата звёздами Telegram. Кристаллы приходят на баланс сразу
+                  после оплаты.
+                </p>
+                <div className="star-packs">
+                  {STAR_PACKS.map((pack) => {
+                    const bonus = packBonus(pack)
+                    return (
+                      <button
+                        key={pack.id}
+                        className="star-pack"
+                        disabled={busy}
+                        onClick={() => void buyStars(pack.id)}
+                      >
+                        <span className="star-pack-price">
+                          <Star size={16} /> {format(pack.stars)}
+                        </span>
+                        <strong>{format(pack.crystals)}</strong>
+                        <small>кристаллов</small>
+                        {bonus > 0 && <em>+{bonus}%</em>}
+                      </button>
+                    )
+                  })}
+                </div>
+                {error && (
+                  <p className="star-error" role="alert">
+                    {error}
+                  </p>
+                )}
               </>
             )}
             {modal === 'promo' && (
