@@ -1,3 +1,6 @@
+import { skinCatalog } from './skin-catalog'
+import { approximatePriceUsd } from './skin-prices'
+
 const baseSkins = [
   {
     id: 'slate',
@@ -506,6 +509,7 @@ export type Skin = {
   color: string
   knife?: boolean
   glove?: boolean
+  charm?: boolean
 }
 
 const rarityColor = {
@@ -563,7 +567,9 @@ const glove = (
   color: string,
 ): Skin => ({
   id: `glove-${slug}`,
-  image: `/skins/glove-${slug}.svg`,
+  image: skinCatalog.find(
+    (skin) => skin.weapon === weapon && skin.name === name,
+  )!.image,
   name,
   weapon,
   value,
@@ -625,7 +631,7 @@ const extraSkins: Skin[] = [
   edition('Butterfly Knife', 'Slaughter', 'coll', 340000),
   edition('M9 Bayonet', 'Tiger Tooth', 'coll', 420000),
   edition('Flip Knife', 'Doppler', 'coll', 650000),
-  // Gloves (drawn placeholder art in /public/skins/glove-*.svg)
+  // Preserve legacy glove IDs and values; use the confirmed CS2 renders.
   glove('hand-wraps-slaughter', 'Hand Wraps', 'Slaughter', 48000, '#e5cdb0'),
   glove('moto-spearmint', 'Moto Gloves', 'Spearmint', 72000, '#6fd1a8'),
   glove('bloodhound-charred', 'Bloodhound Gloves', 'Charred', 95000, '#d08a4c'),
@@ -639,10 +645,63 @@ const extraSkins: Skin[] = [
   glove('specialist-fade', 'Specialist Gloves', 'Fade', 2200000, '#ff9d52'),
 ]
 
-export const skins: readonly Skin[] = [...baseSkins, ...extraSkins]
+// Keep every existing ID/value so inventories remain compatible. Only images are
+// refreshed for existing items; new finishes are appended once by weapon + name.
+const existingSkins: Skin[] = [...baseSkins, ...extraSkins]
+const itemKey = (skin: Pick<Skin, 'weapon' | 'name'>) => `${skin.weapon} | ${skin.name}`
+const catalogByName = new Map(skinCatalog.map((skin) => [itemKey(skin), skin]))
+const existingNames = new Set(existingSkins.map(itemKey))
+const mergedSkins: Skin[] = [
+  ...existingSkins.map((skin) => ({
+    ...skin,
+    image: catalogByName.get(itemKey(skin))?.image ?? skin.image,
+  })),
+  ...skinCatalog.filter((skin) => !existingNames.has(itemKey(skin))),
+]
+
+/**
+ * Price floor in crystals for expensive items, from the approximate USD price.
+ * Values are only ever raised, never lowered, so inventories keep their worth.
+ * $100-299 -> 45k-85k, $300-999 -> 85k-180k, $1000+ -> 180k and up.
+ */
+const valueFloor = (usd: number) =>
+  usd >= 1000
+    ? 180000 + (usd - 1000) * 40
+    : usd >= 300
+      ? 85000 + (usd - 300) * (95000 / 700)
+      : usd >= 100
+        ? 45000 + (usd - 100) * 200
+        : 0
+const roundValue = (v: number) =>
+  v >= 100000 ? Math.round(v / 5000) * 5000 : Math.round(v / 500) * 500
+const editionMultiplier = { st: 1.6, souv: 4, coll: 3 } as const
+const editionSuffix = /-(st|souv|coll)$/
+
+const raisedById = new Map<string, number>()
+for (const skin of mergedSkins) {
+  if (editionSuffix.test(skin.id)) continue
+  const floor = roundValue(valueFloor(approximatePriceUsd(skin)))
+  if (floor > skin.value) raisedById.set(skin.id, floor)
+}
+
+export const skins: readonly Skin[] = mergedSkins.map((skin) => {
+  const match = editionSuffix.exec(skin.id)
+  if (match) {
+    const baseValue = raisedById.get(skin.id.replace(editionSuffix, ''))
+    if (baseValue === undefined) return skin
+    const kind = match[1] as keyof typeof editionMultiplier
+    return {
+      ...skin,
+      value: Math.max(skin.value, roundValue(baseValue * editionMultiplier[kind])),
+    }
+  }
+  const raised = raisedById.get(skin.id)
+  return raised === undefined ? skin : { ...skin, value: raised }
+})
 
 export const isKnife = (skin: Skin) => skin.knife === true
 export const isGlove = (skin: Skin) => skin.glove === true
+export const isCharm = (skin: Skin) => skin.charm === true
 /** Knives and gloves: the "premium-only" drops. */
 export const isPremiumItem = (skin: Skin) => isKnife(skin) || isGlove(skin)
 
@@ -704,7 +763,7 @@ const basicPool = (price: number) => (s: Skin) =>
 const weaponPool = (weapon: string) => (s: Skin) =>
   s.weapon === weapon && !isPremiumItem(s)
 const premiumPool = (price: number) => (s: Skin) =>
-  s.value >= price * 0.12 && s.value <= price * 5
+  s.value >= price * 0.3 && s.value <= price * 5
 
 const caseDefs: CaseDef[] = [
   // --- Обычные: 500 – 20 000 ---

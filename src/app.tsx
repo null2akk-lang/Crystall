@@ -31,6 +31,8 @@ import {
   type Tier,
 } from './lib/game'
 import { AdminPanel, type JournalRow } from './components/admin-panel'
+import { SkinPrice } from './components/skin-price'
+import { caseCovers, sortedCases } from './lib/case-covers'
 
 type Tab = 'cases' | 'upgrade' | 'inventory'
 type Outcome = { title: string; skin?: string; won?: boolean }
@@ -46,36 +48,51 @@ function Weapon({
   // A failed download is retried (with a cache-busting suffix) before giving up.
   const [attempt, setAttempt] = useState(0)
   useEffect(() => setAttempt(0), [item.image])
-  if (attempt > 3)
-    return (
-      <span
-        className={`weapon weapon-missing ${className}`}
-        role="img"
-        aria-label={`${item.weapon} | ${item.name}`}
-      >
-        {item.weapon}
-      </span>
-    )
   return (
-    <img
-      className={`weapon ${className}`}
-      src={attempt ? `${item.image}?retry=${attempt}` : item.image}
-      alt={`${item.weapon} | ${item.name}`}
-      width={420}
-      height={280}
-      decoding="async"
-      onError={() => setTimeout(() => setAttempt((n) => n + 1), 500 * (attempt + 1))}
-    />
+    <span className={`weapon ${className}`}>
+      {attempt > 3 ? (
+        <span
+          className="weapon-render weapon-missing"
+          role="img"
+          aria-label={`${item.weapon} | ${item.name}`}
+        >
+          {item.weapon}
+        </span>
+      ) : (
+        <img
+          className="weapon-render"
+          src={attempt ? `${item.image}?retry=${attempt}` : item.image}
+          alt={`${item.weapon} | ${item.name}`}
+          width={420}
+          height={280}
+          decoding="async"
+          loading="lazy"
+          onError={() =>
+            setTimeout(() => setAttempt((n) => n + 1), 500 * (attempt + 1))
+          }
+        />
+      )}
+      <SkinPrice item={item} />
+    </span>
   )
 }
-function CaseArt({ color, index }: { color: string; index: number }) {
+
+function CaseArt({
+  color,
+  index,
+  caseId,
+}: {
+  color: string
+  index: number
+  caseId: string
+}) {
   return (
     <div
       className="case-art"
       style={{ '--case': color } as React.CSSProperties}
     >
       <div className="case-halo" />
-      <Weapon skin={['slate', 'toxic', 'pulse', 'karambit'][index]} />
+      <Weapon skin={caseCovers.get(caseId)} />
       <svg
         className="crate"
         viewBox="0 0 320 160"
@@ -97,7 +114,9 @@ function CaseArt({ color, index }: { color: string; index: number }) {
         <path d="M193 90L201 84L210 87L202 101Z" fill="#27352a" />
         <path d="M52 96L135 140L271 114" stroke="#8b9595" strokeWidth="3" />
       </svg>
-      <span className="case-serial">CD / {String(index + 1).padStart(2, '0')}</span>
+      <span className="case-serial">
+        CD / {String(index + 1).padStart(2, '0')}
+      </span>
     </div>
   )
 }
@@ -148,9 +167,10 @@ export function Home() {
     : skins.map((s) => ({ skin: s, chance: 0 }))
   const tierCount = (t: Tier) =>
     targets.filter((x) => chanceTier(x.chance) === t).length
-  const shownTargets = source && tier !== 'all'
-    ? targets.filter((x) => chanceTier(x.chance) === tier)
-    : targets
+  const shownTargets =
+    source && tier !== 'all'
+      ? targets.filter((x) => chanceTier(x.chance) === tier)
+      : targets
 
   async function call(action: string, data: Record<string, unknown> = {}) {
     setError('')
@@ -165,8 +185,11 @@ export function Home() {
           ref: new URLSearchParams(window.location.search).get('ref'),
           // Signed Telegram profile data (empty outside Telegram).
           initData:
-            (window as Window & { Telegram?: { WebApp?: { initData?: string } } })
-              .Telegram?.WebApp?.initData || undefined,
+            (
+              window as Window & {
+                Telegram?: { WebApp?: { initData?: string } }
+              }
+            ).Telegram?.WebApp?.initData || undefined,
           ...data,
         }),
       })
@@ -576,10 +599,14 @@ export function Home() {
                     <span /> Коллекция: Original
                   </div>
                 </div>
+                <p className="market-note">
+                  На скинах указаны примерные цены обычных версий в долларах
+                  США.
+                </p>
                 <div className="cases-grid">
-                  {cases.map((c, i) => (
+                  {sortedCases.map((c, i) => (
                     <Fragment key={c.id}>
-                      {(i === 0 || cases[i - 1].group !== c.group) && (
+                      {(i === 0 || sortedCases[i - 1].group !== c.group) && (
                         <div className="cases-group-title">
                           <strong>
                             {caseGroups.find((g) => g.id === c.group)?.label}
@@ -601,7 +628,7 @@ export function Home() {
                           <span className="case-tag">{c.tag}</span>
                           <ArrowUpRight size={17} />
                         </div>
-                        <CaseArt color={c.color} index={i} />
+                        <CaseArt color={c.color} index={i} caseId={c.id} />
                         <div className="case-info">
                           <h3>{c.name}</h3>
                           <p>{c.subtitle}</p>
@@ -776,7 +803,11 @@ export function Home() {
                 </section>
                 <section>
                   <h3>Цель апгрейда</h3>
-                  <div className="tier-filter" role="group" aria-label="Шанс успеха">
+                  <div
+                    className="tier-filter"
+                    role="group"
+                    aria-label="Шанс успеха"
+                  >
                     <button
                       className={`tier-chip ${tier === 'all' ? 'active' : ''}`}
                       aria-pressed={tier === 'all'}
@@ -802,7 +833,8 @@ export function Home() {
                   </div>
                   {!source && (
                     <p className="muted tier-hint">
-                      Выбери свой скин, чтобы увидеть шансы и отфильтровать цели.
+                      Выбери свой скин, чтобы увидеть шансы и отфильтровать
+                      цели.
                     </p>
                   )}
                   {source && !shownTargets.length && (
@@ -1036,7 +1068,11 @@ export function Home() {
                   </div>
                 ) : (
                   <div className={busy ? 'opening-case' : ''}>
-                    <CaseArt color={box.color} index={cases.indexOf(box)} />
+                    <CaseArt
+                      color={box.color}
+                      index={sortedCases.indexOf(box)}
+                      caseId={box.id}
+                    />
                   </div>
                 )}
                 <p className="modal-note">
@@ -1052,16 +1088,16 @@ export function Home() {
                       (a, b) => skinById(b.skin).value - skinById(a.skin).value,
                     )
                     .map((d) => {
-                    const s = skinById(d.skin)
-                    return (
-                      <div key={d.skin}>
-                        <span style={{ color: s.color }}>
-                          {s.weapon} · {s.name}
-                        </span>
-                        <strong>{format(d.weight / 100)}%</strong>
-                      </div>
-                    )
-                  })}
+                      const s = skinById(d.skin)
+                      return (
+                        <div key={d.skin}>
+                          <span style={{ color: s.color }}>
+                            {s.weapon} · {s.name}
+                          </span>
+                          <strong>{format(d.weight / 100)}%</strong>
+                        </div>
+                      )
+                    })}
                 </div>
                 {error && (
                   <p role="alert" className="inline-error">
@@ -1234,7 +1270,9 @@ export function Home() {
                       />
                       <button
                         className="primary full"
-                        disabled={busy || adminBusy || !player || !promoCode.trim()}
+                        disabled={
+                          busy || adminBusy || !player || !promoCode.trim()
+                        }
                       >
                         {busy ? 'Активируем…' : 'Получить бонус'}{' '}
                         <Gift size={18} />

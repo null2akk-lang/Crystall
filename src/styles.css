@@ -2082,7 +2082,7 @@ footer button {
 }
 
 /* Steam renders share the existing art composition and rarity backgrounds. */
-img.weapon {
+.weapon {
   object-fit: contain;
   height: auto;
   aspect-ratio: 3 / 2;
@@ -2695,4 +2695,42 @@ img.weapon {
   .dev-items {
     display: none;
   }
+}
+
+/* Keep every existing artwork size while anchoring the approximate price to its image. */
+.weapon {
+  position: relative;
+}
+.weapon-render {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.skin-price {
+  position: absolute;
+  bottom: -6px;
+  right: 4px;
+  z-index: 3;
+  padding: 0;
+  color: #c2c9c0;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  white-space: nowrap;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.case-art .skin-price {
+  transform: rotate(8deg);
+  bottom: 0;
+}
+
+.market-note {
+  margin: 0 0 18px;
+  color: #a4afbb;
+  font-size: 11px;
+  line-height: 1.6;
 }

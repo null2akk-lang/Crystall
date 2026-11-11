@@ -1,0 +1,59 @@
+[knife]
+Karambit|Fade;Marble Fade;Tiger Tooth;Crimson Web;Slaughter;Case Hardened;Lore;Autotronic;Gamma Doppler
+Bayonet|Doppler;Marble Fade;Tiger Tooth;Crimson Web;Slaughter
+M9 Bayonet|Fade;Doppler;Marble Fade;Crimson Web;Case Hardened
+Butterfly Knife|Fade;Doppler;Marble Fade;Tiger Tooth;Case Hardened
+Flip Knife|Fade;Marble Fade;Tiger Tooth;Slaughter
+Huntsman Knife|Fade;Doppler;Slaughter;Marble Fade
+Gut Knife|Fade;Doppler;Tiger Tooth
+Falchion Knife|Doppler;Marble Fade;Slaughter
+Bowie Knife|Fade;Doppler;Slaughter
+Shadow Daggers|Fade;Doppler;Slaughter
+Navaja Knife|Fade;Doppler
+Stiletto Knife|Fade;Doppler
+Talon Knife|Fade;Doppler;Marble Fade
+Ursus Knife|Fade;Doppler
+Skeleton Knife|Fade;Crimson Web
+Nomad Knife|Fade;Crimson Web
+Kukri Knife|Fade;Slaughter
+[glove]
+Sport Gloves|Pandora's Box;Vice;Hedge Maze;Superconductor;Amphibious;Arid;Omega
+Specialist Gloves|Crimson Kimono;Emerald Web;Fade;Foundation;Mogul;Marble Fade;Forest DDPAT
+Driver Gloves|King Snake;Crimson Weave;Lunar Weave;Diamondback;Overtake;Imperial Plaid
+Moto Gloves|Spearmint;Cool Mint;Eclipse;POW!;Transport;Boom!
+Bloodhound Gloves|Charred;Snakebite;Bronzed;Guerrilla
+Hand Wraps|Slaughter;Cobalt Skulls;Duct Tape;Badlands;Leather;Overprint;Giraffe
+Hydra Gloves|Case Hardened;Emerald;Mangrove;Rattler
+[weapon]
+AK-47|Fire Serpent;Vulcan;Asiimov;Neon Revolution;Bloodsport;Fuel Injector;Hydroponic;Wasteland Rebel;Case Hardened;Neon Rider;Phantom Disruptor;Point Disarray
+M4A4|Howl;Asiimov;Desolate Space;The Emperor;Buzz Kill;Cyber Security;龍王 (Dragon King);Poseidon
+M4A1-S|Hyper Beast;Cyrex;Golden Coil;Master Piece;Hot Rod;Chantico's Fire;Mecha Industries;Knight;Atomic Alloy;Blue Phosphor
+AWP|Medusa;Gungnir;Hyper Beast;Lightning Strike;Fade;Containment Breach;Oni Taiji;Wildfire;Graphite;Man-o'-war;Electric Hive
+USP-S|Kill Confirmed;Orion;Neo-Noir;Caiman;Printstream;Whiteout;Guardian;Road Rash
+Desert Eagle|Blaze;Code Red;Printstream;Kumicho Dragon;Hypnotic;Sunset Storm 壱;Sunset Storm 弐;Mecha Industries;Cobalt Disruption
+Glock-18|Fade;Water Elemental;Wasteland Rebel;Vogue;Bullet Queen;Neo-Noir;Gamma Doppler
+P250|Whiteout;See Ya Later;Muertos;Nevermore
+Five-SeveN|Hyper Beast;Case Hardened;Fowl Play;Angry Mob
+Tec-9|Fuel Injector;Nuclear Threat;Decimator
+CZ75-Auto|Victoria;Xiphos;Tigris
+R8 Revolver|Fade;Crimson Web;Llama Cannon
+P90|Asiimov;Death by Kitty;Emerald Dragon;Trigon
+MP7|Bloodsport;Nemesis;Fade
+MAC-10|Neon Rider;Stalker;Heat
+UMP-45|Primal Saber;Momentum;Blaze
+MP9|Hypnotic;Hot Rod;Rose Iron
+PP-Bizon|Judgement of Anubis;Blue Streak
+Galil AR|Chatterbox;Eco;Cerberus
+FAMAS|Roll Cage;Djinn;Pulse
+SG 553|Cyrex;Integrale;Pulse
+AUG|Chameleon;Akihabara Accept;Stymphalian
+SSG 08|Blood in the Water;Dragonfire;Death Strike
+SCAR-20|Cyrex;Cardiac;Emerald
+G3SG1|The Executioner;Flux
+Nova|Hyper Beast;Bloomstick
+XM1014|Tranquility;Incinegator
+MAG-7|Bulldozer;Praetorian
+Negev|Man-o'-war;Power Loader
+M249|Nebula Crusader;Emerald Poison Dart
+[charm]
+Брелок|Lil' Ava;Lil' Squirt;Lil' Monster;Lil' Teacup;Lil' Whiskers;Lil' Crass;Lil' Cap Gun;Hot Howl;Hot Wurst;Hot Sauce;Hot Hands;Baby Karat T;Baby Karat CT;Disco MAC;Diner Dog;Backsplash;Semi-Precious;Titeenium AWP;Die-cast AK;POP Art;Glamour Shot;Big Kev;Pocket AWP;Chicken Lil';Whittle Knife
